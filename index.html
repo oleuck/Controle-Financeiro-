@@ -123,9 +123,10 @@
     .parcela-badge { background-color: var(--bg-tertiary); color: var(--text-muted); padding: 0.15rem 0.4rem; border-radius: 0.35rem; font-size: 0.75rem; font-weight: 600; }
 
     /* Estilo Especial para Faturas Fantasmas (Meses Futuros) */
-    .future-row { opacity: 0.5; background-color: rgba(255, 255, 255, 0.02); }
+    .future-row { opacity: 0.45; background-color: rgba(255, 255, 255, 0.02); }
     .future-row td { color: var(--text-muted); }
     .future-row .cat-tag { filter: grayscale(1); }
+    .future-row .status-badge { background-color: var(--bg-tertiary); color: var(--text-muted); border-color: var(--border-color); }
 
     .btn { padding: 0.45rem 0.85rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: 1px solid transparent; display: inline-flex; align-items: center; gap: 0.35rem; transition: all 0.15s; }
     .btn-primary { background-color: var(--accent-blue); color: #fff; }
@@ -740,7 +741,6 @@
       return state.years[y][m];
     }
 
-    // Procura transação no array de todos os meses, permite interagir com contas visíveis como fantasmas
     function findExpenseGlobal(id) {
         for (let y in state.years) {
             for (let m in state.years[y]) {
@@ -901,16 +901,16 @@
       const data = getMonthData();
       let allItems = [...data.expenses];
 
-      // Pega compras de cartão feitas no mês atual, mas com vencimento no futuro
-      for(let i = 1; i <= 12; i++) {
-          let scanMIdx = currentMIdx + i;
-          let scanYNum = currentYNum;
-          if(scanMIdx > 11) { scanMIdx = scanMIdx % 12; scanYNum += Math.floor((currentMIdx + i) / 12); }
-          const mName = MONTHS[scanMIdx];
-          if(state.years[scanYNum] && state.years[scanYNum][mName]) {
-              state.years[scanYNum][mName].expenses.forEach(fe => {
+      // Busca faturas futuras (comprado neste mês, vence depois)
+      for(let y in state.years) {
+          for(let m in state.years[y]) {
+              if (y == currentYNum && m == state.currentMonth) continue; // Pula o mes atual real
+
+              state.years[y][m].expenses.forEach(fe => {
                   if(fe.dataDespesa && fe.dataDespesa.endsWith(currentSuffix)) {
-                      allItems.push({ ...fe, isFutureView: true, originalMonthName: mName, originalYear: scanYNum });
+                      if (!fe.vencimento.endsWith(currentSuffix)) {
+                          allItems.push({ ...fe, isFutureView: true, originalMonthName: m, originalYear: y });
+                      }
                   }
               });
           }
@@ -951,11 +951,16 @@
           else if (e.status === 'NÃO APLICÁVEL') stClass = 'status-nao-aplicavel';
 
           const isFuture = e.isFutureView;
+          const isPastPurchase = !isFuture && e.dataDespesa && !e.dataDespesa.endsWith(currentSuffix);
           const rowClass = isFuture ? 'future-row' : '';
 
           let cardInfo = '';
           if (isFuture) {
              cardInfo = `<span style="font-size: 0.7rem; color: var(--accent-blue); display:block; margin-top: 3px; font-weight: 700;"><i class="fas fa-forward"></i> Fatura de ${e.originalMonthName}/${e.originalYear}</span>`;
+          } else if (isPastPurchase) {
+             const [dD, mD, yD] = e.dataDespesa.split('/');
+             const mNameStr = MONTHS[parseInt(mD, 10) - 1];
+             cardInfo = `<span style="font-size: 0.7rem; color: var(--text-muted); display:block; margin-top: 3px; font-weight: 600;"><i class="fas fa-history"></i> Comprado em ${mNameStr}/${yD}</span>`;
           }
 
           tbody.innerHTML += `
@@ -1087,7 +1092,7 @@
         const obs = document.getElementById('expObs').value.trim();
         const isRepeat = document.getElementById('expRepeat').checked;
 
-        // Auto-save categoria nova
+        // Auto-save categoria
         const catInput = document.getElementById('expCat').value.trim().toUpperCase();
         const cat = catInput || 'OUTROS';
         if (catInput && !state.categories.some(c => c.name.toUpperCase() === catInput)) {
@@ -1146,7 +1151,7 @@
 
               const targetDueDate = `${String(dayNum).padStart(2, '0')}/${String(targetMonthIndexInYear + 1).padStart(2, '0')}/${targetYearStr}`;
               
-              let parcStr = parc; // Mantem o que o usuario digitou caso seja fixa (geralmente vazio)
+              let parcStr = parc; 
               if (repType === 'installments') { parcStr = `${currentInstNum}/${totInst}`; }
 
               state.years[targetYearStr][targetMonthName].expenses.push({
@@ -1258,9 +1263,7 @@
       closeModal('incomeModal'); render(); syncToCloud(); showToast('Receita salva!');
     });
 
-    function delIncome(idx) {
-      showCustomConfirm("Excluir Receita", "Deseja excluir esta entrada de renda?", () => { getMonthData().incomes.splice(idx, 1); render(); syncToCloud(); showToast('Receita removida!'); }, '🗑️');
-    }
+    function delIncome(idx) { showCustomConfirm("Excluir Receita", "Deseja excluir esta entrada de renda?", () => { getMonthData().incomes.splice(idx, 1); render(); syncToCloud(); showToast('Receita removida!'); }, '🗑️'); }
 
     function openNewYearModal() { openModal('yearModal'); }
     
@@ -1295,34 +1298,26 @@
     }
 
     function updateCatCol(idx, col) { if (state.categories[idx]) { state.categories[idx].color = col; fillSelects(); render(); syncToCloud(); } }
-
     function delCat(idx) { showCustomConfirm("Excluir Categoria", "Deseja excluir esta categoria?", () => { state.categories.splice(idx, 1); renderCatList(); fillSelects(); render(); syncToCloud(); showToast('Excluída!'); }, '🏷️'); }
 
     function openPayModal() { renderPayList(); openModal('payModal'); }
 
     function renderPayList() {
       const wrap = document.getElementById('payListWrap'); wrap.innerHTML = '';
-      state.paymentMethods.forEach((p, i) => {
-        wrap.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-tertiary); padding:0.45rem 0.6rem; border-radius:0.4rem; border:1px solid var(--border-color);"><strong>${p}</strong> <button class="btn btn-danger btn-sm" onclick="delPay(${i})">🗑️</button></div>`;
-      });
+      state.paymentMethods.forEach((p, i) => { wrap.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-tertiary); padding:0.45rem 0.6rem; border-radius:0.4rem; border:1px solid var(--border-color);"><strong>${p}</strong> <button class="btn btn-danger btn-sm" onclick="delPay(${i})">🗑️</button></div>`; });
     }
 
     function addPay() {
       const n = document.getElementById('payNewName').value.trim().toUpperCase();
-      if (n) {
-        if (state.paymentMethods.includes(n)) { showCustomAlert("Duplicada", "Já existe.", "ℹ️"); return; }
-        state.paymentMethods.push(n); document.getElementById('payNewName').value = ''; renderPayList(); fillSelects(); render(); syncToCloud(); showToast('Adicionado!');
-      }
+      if (n) { if (state.paymentMethods.includes(n)) { showCustomAlert("Duplicada", "Já existe.", "ℹ️"); return; }
+        state.paymentMethods.push(n); document.getElementById('payNewName').value = ''; renderPayList(); fillSelects(); render(); syncToCloud(); showToast('Adicionado!'); }
     }
 
     function delPay(idx) { showCustomConfirm("Excluir", "Deseja excluir esta forma de pagamento?", () => { state.paymentMethods.splice(idx, 1); renderPayList(); fillSelects(); render(); syncToCloud(); showToast('Excluída!'); }, '💳'); }
 
-    // ==== LÓGICA DE GERENCIAR CARTÕES ====
     function openCardModal() { renderCardList(); toggleCardTypeUI(); openModal('cardModal'); }
-
     function toggleCardTypeUI() {
-      const type = document.getElementById('cardType').value;
-      const fixedFields = document.getElementById('cardFixedFields'); const rollingFields = document.getElementById('cardRollingFields');
+      const type = document.getElementById('cardType').value; const fixedFields = document.getElementById('cardFixedFields'); const rollingFields = document.getElementById('cardRollingFields');
       if (type === 'rolling') { fixedFields.style.display = 'none'; rollingFields.style.display = 'grid'; document.getElementById('closingDay').required = false; document.getElementById('dueDay').required = false; } else { fixedFields.style.display = 'grid'; rollingFields.style.display = 'none'; document.getElementById('closingDay').required = true; document.getElementById('dueDay').required = true; }
     }
 
@@ -1345,8 +1340,7 @@
     }
 
     function renderAnnual() {
-      document.getElementById('annChartYear').innerText = state.currentYear;
-      let totI = 0, totE = 0, totP = 0, totPend = 0;
+      document.getElementById('annChartYear').innerText = state.currentYear; let totI = 0, totE = 0, totP = 0, totPend = 0;
       const chart = document.getElementById('annualChart'); const tbody = document.getElementById('annualTableBody'); chart.innerHTML = ''; tbody.innerHTML = '';
 
       let max = 1000;
@@ -1374,7 +1368,82 @@
     }
 
     function exportDataJSON() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2)); const a = document.createElement('a'); a.href = dataStr; a.download = `backup_financas_${state.currentYear}.json`; a.click(); showToast('Backup JSON gerado com sucesso!'); }
-    function importDataJSON(e) { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { try { const imported = JSON.parse(ev.target.result); if (imported && imported.years) { state = sanitizeData(imported); renderYears(); renderTabs(); fillSelects(); render(); syncToCloud(); showToast('Dados restaurados com sucesso!'); } } catch (err) { showCustomAlert("Erro de Importação", "Arquivo JSON inválido: " + err.message, "❌"); } }; r.readAsText(f); }
+    
+    // ======== NOVO CONVERSOR AUTOMÁTICO ======== 
+    function importDataJSON(e) {
+      const f = e.target.files[0]; if (!f) return; const r = new FileReader();
+      r.onload = ev => {
+        try {
+          const imported = JSON.parse(ev.target.result);
+          if (Array.isArray(imported)) {
+             // É o backup antigo! Vamos converter:
+             const newState = JSON.parse(JSON.stringify(INITIAL_SCHEMA));
+             newState.years = {}; 
+             const cardsMap = {};
+             let cardCounter = 1;
+
+             imported.forEach(item => {
+                 const [yE, mE, dE] = item.effectiveDate.split('-');
+                 const yNumE = parseInt(yE, 10);
+                 const mNameE = MONTHS[parseInt(mE, 10) - 1];
+
+                 const [yD, mD, dD] = item.date.split('-');
+
+                 if (!newState.years[yE]) newState.years[yE] = createEmptyYear();
+
+                 if (item.type === 'income') {
+                     newState.years[yE][mNameE].incomes.push({ name: item.description, value: item.amount });
+                 } else {
+                     let payMethod = item.method;
+                     if (payMethod === 'money') payMethod = 'DINHEIRO';
+                     else if (payMethod && payMethod.startsWith('card_')) {
+                         if (!cardsMap[payMethod]) {
+                             cardsMap[payMethod] = `Cartão ${cardCounter++}`;
+                             newState.cards.push({ id: payMethod, name: cardsMap[payMethod], type: 'fixed', closingDay: 1, dueDay: parseInt(dE, 10) });
+                         }
+                         payMethod = cardsMap[payMethod];
+                     }
+
+                     let parcela = '';
+                     const match = item.description.match(/\((\d+\/\d+)\)$/);
+                     let desc = item.description;
+                     if (match) {
+                         parcela = match[1];
+                         desc = desc.replace(/\s*\(\d+\/\d+\)$/, ''); // Tira a parcela do nome
+                     }
+
+                     newState.years[yE][mNameE].expenses.push({
+                         id: item.id || ('e_' + Date.now() + Math.random()),
+                         descricao: desc,
+                         valor: item.amount,
+                         categoria: item.category || 'OUTROS',
+                         formaPgto: payMethod,
+                         status: item.status === 'paid' ? 'PAGO' : 'À PAGAR',
+                         vencimento: `${dE}/${mE}/${yE}`,
+                         dataDespesa: `${dD}/${mD}/${yD}`,
+                         parcela: parcela,
+                         obs: ''
+                     });
+                 }
+
+                 if (item.category && !newState.categories.some(c => c.name.toUpperCase() === item.category.toUpperCase())) {
+                     newState.categories.push({ name: item.category, color: '#38bdf8' }); 
+                 }
+             });
+
+             state = sanitizeData(newState);
+             renderYears(); renderTabs(); fillSelects(); render(); syncToCloud();
+             showToast('Backup antigo convertido e importado!');
+          }
+          else if (imported && imported.years) {
+             state = sanitizeData(imported);
+             renderYears(); renderTabs(); fillSelects(); render(); syncToCloud();
+             showToast('Dados restaurados com sucesso!');
+          }
+        } catch (err) { showCustomAlert("Erro de Importação", "Arquivo JSON inválido: " + err.message, "❌"); }
+      }; r.readAsText(f);
+    }
+
     function exportCSV() { const d = getMonthData(); let csv = "Forma Pgto;Descricao;Categoria;Valor;Vencimento;Data Compra;Status;Parcela;Obs\n"; d.expenses.forEach(e => { csv += `"${e.formaPgto || ''}";"${e.descricao || ''}";"${e.categoria || ''}";"${e.valor || 0}";"${e.vencimento || ''}";"${e.dataDespesa || ''}";"${e.status || ''}";"${e.parcela || ''}";"${e.obs || ''}"\n`; }); const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `despesas_${state.currentYear}_${state.currentMonth}.csv`; a.click(); showToast('CSV exportado com sucesso!'); }
 
     window.addEventListener('DOMContentLoaded', () => { startRealtimeSync(); renderYears(); renderTabs(); fillSelects(); render(); });

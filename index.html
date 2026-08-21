@@ -317,8 +317,8 @@
                     <th class="sortable" onclick="sortTable('descricao')">Descrição ⇅</th>
                     <th class="sortable" onclick="sortTable('categoria')">Categoria ⇅</th>
                     <th class="sortable" onclick="sortTable('valor')">Valor (R$) ⇅</th>
-                    <th class="sortable" onclick="sortTable('vencimento')">Vencimento ⇅</th>
                     <th class="sortable" onclick="sortTable('dataDespesa')">Data Compra ⇅</th>
+                    <th class="sortable" onclick="sortTable('vencimento')">Vencimento ⇅</th>
                     <th class="sortable" onclick="sortTable('status')">Status ⇅</th>
                     <th class="sortable" onclick="sortTable('parcela')">Parcela ⇅</th>
                     <th>Obs</th>
@@ -443,11 +443,11 @@
           </div>
 
           <div class="form-row-2">
-            <div>
-              <label style="font-size: 0.8rem; color: var(--text-muted);">Parcela (Ex: 1/60)</label>
-              <input type="text" id="expParc" placeholder="Ex: 1/60" style="width: 100%;">
+            <div id="standaloneParcWrap">
+              <label style="font-size: 0.8rem; color: var(--text-muted);">Parcela Avulsa (Ex: 1/12)</label>
+              <input type="text" id="expParc" placeholder="Ex: 1/12" style="width: 100%;">
             </div>
-            <div>
+            <div id="obsWrap" style="grid-column: span 1;">
               <label style="font-size: 0.8rem; color: var(--text-muted);">Observações</label>
               <input type="text" id="expObs" placeholder="Ex: Pago via Pix..." style="width: 100%;">
             </div>
@@ -479,11 +479,11 @@
               <div id="repInstFields" style="display: none; grid-column: span 2; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                 <div>
                   <label style="font-size: 0.75rem; color: var(--text-muted);">Total de Parcelas:</label>
-                  <input type="number" min="2" max="360" id="repTotal" value="12" style="width: 100%;" oninput="updateParcelaPreview()">
+                  <input type="number" min="2" max="360" id="repTotal" value="12" style="width: 100%;">
                 </div>
                 <div>
                   <label style="font-size: 0.75rem; color: var(--text-muted);">Parcela Inicial:</label>
-                  <input type="number" min="1" max="360" id="repStart" value="1" style="width: 100%;" oninput="updateParcelaPreview()">
+                  <input type="number" min="1" max="360" id="repStart" value="1" style="width: 100%;">
                 </div>
               </div>
 
@@ -565,6 +565,7 @@
       <div class="modal-header"><h3>Configurar Cartões (Faturas)</h3><button class="btn btn-secondary btn-icon" onclick="closeModal('cardModal')">✕</button></div>
       <div class="modal-body">
         <form id="cardForm" onsubmit="saveCardFromModal(event)" style="display: flex; flex-direction: column; gap: 10px; background: var(--bg-tertiary); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 10px;">
+          <input type="hidden" id="cardIdToEdit" value="">
           <div class="form-row-2">
               <div>
                   <label style="font-size: 0.8rem; color: var(--text-muted);">Nome do Cartão (Ex: Nubank)</label>
@@ -594,7 +595,7 @@
                   <input type="number" id="rollingDays" min="1" max="90" value="30" style="width: 100%;">
               </div>
           </div>
-          <button type="submit" class="btn btn-success" style="justify-content: center; margin-top: 5px;">+ Salvar Cartão</button>
+          <button type="submit" id="btnSalvarCartao" class="btn btn-success" style="justify-content: center; margin-top: 5px;">+ Salvar Cartão</button>
         </form>
 
         <div id="cardListWrap" style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 200px; overflow-y: auto;"></div>
@@ -885,14 +886,21 @@
       let sumCategorized = 0; const catList = document.getElementById('categoriesList'); catList.innerHTML = '';
       const catArray = Object.keys(catTotals).map(cName => { const val = catTotals[cName]; sumCategorized += val; const col = state.categories.find(c => c.name.toUpperCase() === cName.toUpperCase())?.color || '#38bdf8'; return { name: cName, val, col }; }).sort((a, b) => b.val - a.val);
 
+      let hasCats = false;
       catArray.forEach(item => {
-        const pct = sumCategorized > 0 ? (item.val / sumCategorized) * 100 : 0;
-        catList.innerHTML += `
-          <div class="cat-item">
-            <div class="cat-header-line"><span><span class="cat-dot" style="background:${item.col};"></span>${item.name}</span><span><strong>${fmt(item.val)}</strong> <small style="color:var(--text-muted);">(${pct.toFixed(0)}%)</small></span></div>
-            <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%; background:${item.col};"></div></div>
-          </div>`;
+        if (item.val > 0) { // SÓ MOSTRA AS ATIVAS (MAIORES QUE ZERO)
+            hasCats = true;
+            const pct = sumCategorized > 0 ? (item.val / sumCategorized) * 100 : 0;
+            catList.innerHTML += `
+              <div class="cat-item">
+                <div class="cat-header-line"><span><span class="cat-dot" style="background:${item.col};"></span>${item.name}</span><span><strong>${fmt(item.val)}</strong> <small style="color:var(--text-muted);">(${pct.toFixed(0)}%)</small></span></div>
+                <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%; background:${item.col};"></div></div>
+              </div>`;
+        }
       });
+      if (!hasCats) {
+          catList.innerHTML = `<div style="text-align: center; padding: 1rem; color: var(--text-muted); font-size: 0.85rem;">Nenhum gasto neste mês.</div>`;
+      }
       document.getElementById('catTotalFooter').innerText = fmt(sumCategorized);
 
       renderTable();
@@ -962,21 +970,22 @@
 
           let cardInfo = '';
           if (isFuture) {
-             cardInfo = `<span style="font-size: 0.7rem; color: var(--accent-blue); display:block; margin-top: 3px; font-weight: 700;">⏭️ Fatura de ${e.originalMonthName}/${e.originalYear}</span>`;
+             cardInfo = `<span style="font-size: 0.7rem; color: var(--accent-blue); display:block; margin-top: 3px; font-weight: 700;">📅 Fatura de ${e.originalMonthName}/${e.originalYear}</span>`;
           } else if (isPastPurchase) {
              const [dD, mD, yD] = e.dataDespesa.split('/');
              const mNameStr = MONTHS[parseInt(mD, 10) - 1];
              cardInfo = `<span style="font-size: 0.7rem; color: var(--text-muted); display:block; margin-top: 3px; font-weight: 600;">🛒 Comprado em ${mNameStr}/${yD}</span>`;
           }
 
+          // A COLUNA DE DATA COMPRA E VENCIMENTO FORAM INVERTIDAS AQUI CONFORME O SOLICITADO
           tbody.innerHTML += `
             <tr class="${rowClass}">
               <td><strong>${e.formaPgto || '-'}</strong></td>
               <td><strong>${e.descricao}</strong> ${cardInfo}</td>
               <td><span class="cat-tag" style="background:${catConfig.color}20; color:${catConfig.color}; border:1px solid ${catConfig.color}40;"><span class="cat-dot" style="background:${catConfig.color};"></span>${e.categoria}</span></td>
               <td><strong style="color: var(--accent-red);">${fmt(e.valor)}</strong></td>
-              <td><span style="color: var(--text-muted); font-size:0.8rem; font-weight:600;">${e.vencimento || '-'}</span></td>
               <td><span style="color: var(--text-muted); font-size:0.8rem;">${e.dataDespesa || '-'}</span></td>
+              <td><span style="color: var(--text-muted); font-size:0.8rem; font-weight:600;">${e.vencimento || '-'}</span></td>
               <td><span class="status-badge ${stClass}" onclick="toggleStatus('${e.id}')" title="Clique para alternar">${e.status}</span></td>
               <td>${e.parcela ? `<span class="parcela-badge">${e.parcela}</span>` : '-'}</td>
               <td><small style="color: var(--text-muted);">${e.obs || ''}</small></td>
@@ -1008,45 +1017,45 @@
     }
 
     function openModal(id) { document.getElementById(id).classList.add('active'); }
-    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+    
+    function closeModal(id) { 
+        document.getElementById(id).classList.remove('active'); 
+        if(id === 'cardModal') {
+            document.getElementById('cardIdToEdit').value = '';
+            document.getElementById('btnSalvarCartao').innerText = "+ Salvar Cartão";
+            document.getElementById('cardForm').reset();
+        }
+    }
 
     function toggleRepType() {
       const type = document.querySelector('input[name="repType"]:checked').value;
       if(type === 'fixed') {
         document.getElementById('repFixedFields').style.display = 'block';
         document.getElementById('repInstFields').style.display = 'none';
-        document.getElementById('expParc').value = '';
       } else {
         document.getElementById('repFixedFields').style.display = 'none';
         document.getElementById('repInstFields').style.display = 'grid';
-        updateParcelaPreview();
       }
     }
 
+    // OCULTA O CAMPO DE PARCELA AVULSA QUANDO A CAIXINHA ESTÁ MARCADA (RESOLVE A DUPLICIDADE)
     function toggleRepeatFields(checked) {
       document.getElementById('repFields').style.display = checked ? 'block' : 'none';
-      if (checked) { toggleRepType(); } else { document.getElementById('expParc').value = ''; }
-    }
-
-    function handleParcelaInput(val) {
-      if (val && val.includes('/')) {
-        const parts = val.split('/'); const cur = parseInt(parts[0], 10); const tot = parseInt(parts[1], 10);
-        if (!isNaN(cur) && !isNaN(tot) && tot > 1) {
-          document.getElementById('expRepeat').checked = true; document.getElementById('repFields').style.display = 'block';
-          document.querySelector('input[name="repType"][value="installments"]').checked = true;
-          toggleRepType();
-          document.getElementById('repStart').value = cur; document.getElementById('repTotal').value = tot;
-        }
+      document.getElementById('standaloneParcWrap').style.display = checked ? 'none' : 'block';
+      if (checked) { 
+          document.getElementById('obsWrap').style.gridColumn = 'span 2';
+          toggleRepType(); 
+      } else { 
+          document.getElementById('obsWrap').style.gridColumn = 'span 1';
+          document.getElementById('expParc').value = ''; 
       }
-    }
-
-    function updateParcelaPreview() {
-      const st = document.getElementById('repStart').value; const tot = document.getElementById('repTotal').value;
-      if (st && tot) { document.getElementById('expParc').value = `${st}/${tot}`; }
     }
 
     function openExpenseModal(id = null) {
-      fillSelects(); document.getElementById('expId').value = id || ''; document.getElementById('expRepeat').checked = false; document.getElementById('repFields').style.display = 'none';
+      fillSelects(); document.getElementById('expId').value = id || ''; document.getElementById('expRepeat').checked = false; 
+      document.getElementById('repFields').style.display = 'none';
+      document.getElementById('standaloneParcWrap').style.display = 'block';
+      document.getElementById('obsWrap').style.gridColumn = 'span 1';
 
       if (id) {
         const result = findExpenseGlobal(id);
@@ -1077,7 +1086,7 @@
         let curMIdx = MONTHS.indexOf(state.currentMonth); if (curMIdx === -1) curMIdx = 0;
         const mStr = String(curMIdx + 1).padStart(2, '0'); const yStr = state.currentYear || "2026";
         document.getElementById('expVencDate').value = `${yStr}-${mStr}-10`; document.getElementById('expDataDespesa').value = '';
-        document.getElementById('expParc').value = ''; document.getElementById('expObs').value = ''; document.getElementById('repTotal').value = 12; document.getElementById('repMonths').value = 12; document.getElementById('repStart').value = 1; document.getElementById('repeatWrap').style.display = 'block';
+        document.getElementById('expParc').value = ''; document.getElementById('expObs').value = ''; document.getElementById('repeatWrap').style.display = 'block';
       }
       openModal('expenseModal');
     }
@@ -1320,6 +1329,22 @@
 
     function delPay(idx) { showCustomConfirm("Excluir", "Deseja excluir esta forma de pagamento?", () => { state.paymentMethods.splice(idx, 1); renderPayList(); fillSelects(); render(); syncToCloud(); showToast('Excluída!'); }, '💳'); }
 
+    // BOTÃO EDITAR CARTÃO NO MODAL
+    function editCard(idx) {
+        const c = state.cards[idx];
+        document.getElementById('cardIdToEdit').value = c.id;
+        document.getElementById('cardName').value = c.name;
+        document.getElementById('cardType').value = c.type;
+        toggleCardTypeUI();
+        if (c.type === 'rolling') {
+            document.getElementById('rollingDays').value = c.rollingDays || '';
+        } else {
+            document.getElementById('closingDay').value = c.closingDay || '';
+            document.getElementById('dueDay').value = c.dueDay || '';
+        }
+        document.getElementById('btnSalvarCartao').innerText = "💾 Atualizar Cartão";
+    }
+
     function openCardModal() { renderCardList(); toggleCardTypeUI(); openModal('cardModal'); }
     function toggleCardTypeUI() {
       const type = document.getElementById('cardType').value; const fixedFields = document.getElementById('cardFixedFields'); const rollingFields = document.getElementById('cardRollingFields');
@@ -1328,9 +1353,27 @@
 
     function saveCardFromModal(e) {
       e.preventDefault(); const type = document.getElementById('cardType').value; const name = document.getElementById('cardName').value.trim(); if(!name) return;
-      const newCard = { id: 'card_' + Date.now(), name: name, type: type };
-      if (type === 'rolling') { newCard.rollingDays = document.getElementById('rollingDays').value || 30; } else { newCard.closingDay = document.getElementById('closingDay').value || 1; newCard.dueDay = document.getElementById('dueDay').value || 10; }
-      state.cards.push(newCard); document.getElementById('cardForm').reset(); toggleCardTypeUI(); renderCardList(); fillSelects(); syncToCloud(); showToast('Cartão salvo com sucesso!');
+      
+      const editId = document.getElementById('cardIdToEdit').value;
+      if (editId) {
+          const card = state.cards.find(c => c.id === editId);
+          if (card) {
+              card.name = name;
+              card.type = type;
+              if (type === 'rolling') { card.rollingDays = document.getElementById('rollingDays').value || 30; } 
+              else { card.closingDay = document.getElementById('closingDay').value || 1; card.dueDay = document.getElementById('dueDay').value || 10; }
+          }
+      } else {
+          const newCard = { id: 'card_' + Date.now(), name: name, type: type };
+          if (type === 'rolling') { newCard.rollingDays = document.getElementById('rollingDays').value || 30; } 
+          else { newCard.closingDay = document.getElementById('closingDay').value || 1; newCard.dueDay = document.getElementById('dueDay').value || 10; }
+          state.cards.push(newCard); 
+      }
+      
+      document.getElementById('cardIdToEdit').value = '';
+      document.getElementById('btnSalvarCartao').innerText = "+ Salvar Cartão";
+      document.getElementById('cardForm').reset(); 
+      toggleCardTypeUI(); renderCardList(); fillSelects(); syncToCloud(); showToast('Cartão salvo com sucesso!');
     }
 
     function delCard(idx) { showCustomConfirm("Excluir Cartão", "Deseja excluir as configurações deste cartão?", () => { state.cards.splice(idx, 1); renderCardList(); fillSelects(); syncToCloud(); showToast('Cartão excluído!'); }, '💳'); }
@@ -1340,7 +1383,14 @@
       if(state.cards.length === 0) { wrap.innerHTML = '<div style="color:var(--text-muted); font-size: 0.8rem; text-align: center;">Nenhum cartão configurado.</div>'; return; }
       state.cards.forEach((c, i) => {
         const isRolling = c.type === 'rolling'; const ruleText = isRolling ? `Cobra ${c.rollingDays} dias após a compra` : `Fecha dia ${c.closingDay} / Vence dia ${c.dueDay}`;
-        wrap.innerHTML += `<div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-tertiary); padding:0.45rem 0.6rem; border-radius:0.4rem; border:1px solid var(--border-color);"><div style="display: flex; flex-direction: column;"><strong>💳 ${c.name}</strong><small style="color: var(--text-muted); font-size: 0.75rem;">Regra: ${ruleText}</small></div><button class="btn btn-danger btn-sm" onclick="delCard(${i})">🗑️</button></div>`;
+        wrap.innerHTML += `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-tertiary); padding:0.45rem 0.6rem; border-radius:0.4rem; border:1px solid var(--border-color);">
+                <div style="display: flex; flex-direction: column;"><strong>💳 ${c.name}</strong><small style="color: var(--text-muted); font-size: 0.75rem;">Regra: ${ruleText}</small></div>
+                <div style="display: flex; gap: 5px;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="editCard(${i})">✏️</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="delCard(${i})">🗑️</button>
+                </div>
+            </div>`;
       });
     }
 
@@ -1374,7 +1424,6 @@
 
     function exportDataJSON() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2)); const a = document.createElement('a'); a.href = dataStr; a.download = `backup_financas_${state.currentYear}.json`; a.click(); showToast('Backup JSON gerado com sucesso!'); }
     
-    // ====== LÓGICA DE IMPORTAÇÃO CORRIGIDA (SEM CONFLITO COM A NUVEM) ======
     function importDataJSON(e) {
       const f = e.target.files[0]; if (!f) return; const r = new FileReader();
       r.onload = ev => {
@@ -1452,11 +1501,11 @@
              showCustomAlert("Formato Desconhecido", "O arquivo não é um backup compatível.", "❌");
           }
         } catch (err) { showCustomAlert("Erro de Importação", "Arquivo JSON inválido: " + err.message, "❌"); } 
-        finally { e.target.value = ''; } // Libera o input para permitir selecionar o mesmo arquivo novamente
+        finally { e.target.value = ''; } 
       }; r.readAsText(f);
     }
 
-    function exportCSV() { const d = getMonthData(); let csv = "Forma Pgto;Descricao;Categoria;Valor;Vencimento;Data Compra;Status;Parcela;Obs\n"; d.expenses.forEach(e => { csv += `"${e.formaPgto || ''}";"${e.descricao || ''}";"${e.categoria || ''}";"${e.valor || 0}";"${e.vencimento || ''}";"${e.dataDespesa || ''}";"${e.status || ''}";"${e.parcela || ''}";"${e.obs || ''}"\n`; }); const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `despesas_${state.currentYear}_${state.currentMonth}.csv`; a.click(); showToast('CSV exportado com sucesso!'); }
+    function exportCSV() { const d = getMonthData(); let csv = "Forma Pgto;Descricao;Categoria;Valor;Data Compra;Vencimento;Status;Parcela;Obs\n"; d.expenses.forEach(e => { csv += `"${e.formaPgto || ''}";"${e.descricao || ''}";"${e.categoria || ''}";"${e.valor || 0}";"${e.dataDespesa || ''}";"${e.vencimento || ''}";"${e.status || ''}";"${e.parcela || ''}";"${e.obs || ''}"\n`; }); const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `despesas_${state.currentYear}_${state.currentMonth}.csv`; a.click(); showToast('CSV exportado com sucesso!'); }
 
     window.addEventListener('DOMContentLoaded', () => { startRealtimeSync(); renderYears(); renderTabs(); fillSelects(); render(); });
   </script>

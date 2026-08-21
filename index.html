@@ -61,18 +61,7 @@
         </div>
 
         <div class="cards">
-            <div class="card">
-                <h3>Total Entradas</h3>
-                <div id="totalEntradas" class="value positive">R$ 0,00</div>
-            </div>
-            <div class="card">
-                <h3>Total Saídas</h3>
-                <div id="totalSaidas" class="value negative">R$ 0,00</div>
-            </div>
-            <div class="card">
-                <h3>Saldo Disponível</h3>
-                <div id="saldoDisponivel" class="value">R$ 0,00</div>
-            </div>
+            <h3 style="text-align: center; width: 100%;">Carregando dados da nuvem... ☁️</h3>
         </div>
 
         <div class="section">
@@ -131,36 +120,81 @@
         </div>
     </div>
 
+    <!-- Importações do Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
     <script>
+        // Configurações do Firebase fornecidas por você
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEdIIZlNHr9drPwu5RqY5e2muGOxMiKKg",
+            authDomain: "controle-dindin-5ba40.firebaseapp.com",
+            projectId: "controle-dindin-5ba40",
+            storageBucket: "controle-dindin-5ba40.firebasestorage.app",
+            messagingSenderId: "825601485885",
+            appId: "1:825601485885:web:402b83722306025b9e0e54",
+            measurementId: "G-5Y2W858J0G"
+        };
+
+        // Inicializa o Firebase
+        firebase.initializeApp(firebaseConfig);
+        const bancoDeDados = firebase.firestore();
+
         const defaultData = {
             "2026": {
-                "AGOSTO": {
-                    entradas: { renda1: 0, renda2: 0 },
-                    saidas: []
-                }
+                "AGOSTO": { entradas: { renda1: 0, renda2: 0 }, saidas: [] }
             }
         };
 
-        let db = JSON.parse(localStorage.getItem('financeDB_template'));
-        if (!db || Object.keys(db).length === 0) {
-            db = defaultData;
-            saveDB();
-        }
-
-        let currentYear = Object.keys(db)[0];
-        let currentMonth = Object.keys(db[currentYear])[0];
-
+        let db = {};
+        let currentYear = "";
+        let currentMonth = "";
         const categorias = ["SERVIÇOS", "EDUCAÇÃO", "BELEZA", "INVESTIMENTO", "ALIMENTAÇÃO", "IMPREVISTOS", "LAZER", "VARIÁVEL", "GASOLINA", "OUTROS"];
 
-        function saveDB() { localStorage.setItem('financeDB_template', JSON.stringify(db)); }
-
-        function formatCurrency(val) {
-            return "R$ " + parseFloat(val).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        function saveDB() {
+            bancoDeDados.collection("meu_controle").doc("dados_financeiros").set(db)
+                .then(() => console.log("Salvo na nuvem!"))
+                .catch((error) => alert("Erro ao salvar: " + error));
         }
 
         function init() {
-            populateSelectors();
-            render();
+            bancoDeDados.collection("meu_controle").doc("dados_financeiros").get()
+                .then((doc) => {
+                    if (doc.exists) {
+                        db = doc.data();
+                    } else {
+                        db = defaultData;
+                        saveDB(); 
+                    }
+
+                    currentYear = Object.keys(db)[0];
+                    currentMonth = Object.keys(db[currentYear])[0];
+
+                    document.querySelector('.cards').innerHTML = `
+                        <div class="card">
+                            <h3>Total Entradas</h3>
+                            <div id="totalEntradas" class="value positive">R$ 0,00</div>
+                        </div>
+                        <div class="card">
+                            <h3>Total Saídas</h3>
+                            <div id="totalSaidas" class="value negative">R$ 0,00</div>
+                        </div>
+                        <div class="card">
+                            <h3>Saldo Disponível</h3>
+                            <div id="saldoDisponivel" class="value">R$ 0,00</div>
+                        </div>
+                    `;
+
+                    populateSelectors();
+                    render();
+                })
+                .catch((error) => {
+                    alert("Erro ao conectar com o Firebase. Detalhes: " + error);
+                });
+        }
+
+        function formatCurrency(val) {
+            return "R$ " + parseFloat(val).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
         function populateSelectors() {
@@ -210,34 +244,36 @@
             let totalSaidas = 0;
             let catTotals = Object.fromEntries(categorias.map(c => [c, 0]));
 
-            data.saidas.forEach((item, index) => {
-                let val = parseFloat(item.valor) || 0;
-                totalSaidas += val;
-                if(catTotals[item.cat] !== undefined) catTotals[item.cat] += val;
-                else catTotals[item.cat] = val;
+            if(data.saidas) {
+                data.saidas.forEach((item, index) => {
+                    let val = parseFloat(item.valor) || 0;
+                    totalSaidas += val;
+                    if(catTotals[item.cat] !== undefined) catTotals[item.cat] += val;
+                    else catTotals[item.cat] = val;
 
-                let tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><input type="text" value="${item.desc}" onchange="editExpense(${index}, 'desc', this.value)" placeholder="Nome da conta"></td>
-                    <td>
-                        <select onchange="editExpense(${index}, 'cat', this.value)">
-                            ${categorias.map(c => `<option value="${c}" ${c === item.cat ? 'selected' : ''}>${c}</option>`).join('')}
-                        </select>
-                    </td>
-                    <td><input type="number" step="0.01" value="${item.valor}" onchange="editExpense(${index}, 'valor', this.value)"></td>
-                    <td><input type="text" value="${item.venc}" onchange="editExpense(${index}, 'venc', this.value)" placeholder="DD/MM/AAAA"></td>
-                    <td>
-                        <select onchange="editExpense(${index}, 'status', this.value)">
-                            <option value="PAGO" ${item.status === 'PAGO' ? 'selected' : ''}>PAGO</option>
-                            <option value="À PAGAR" ${item.status === 'À PAGAR' ? 'selected' : ''}>À PAGAR</option>
-                            <option value="GUARDADO" ${item.status === 'GUARDADO' ? 'selected' : ''}>GUARDADO</option>
-                        </select>
-                    </td>
-                    <td><input type="text" value="${item.parc}" onchange="editExpense(${index}, 'parc', this.value)" placeholder="Ex: 1/12"></td>
-                    <td><button class="action-btn btn-danger" onclick="deleteExpense(${index})">X</button></td>
-                `;
-                tbody.appendChild(tr);
-            });
+                    let tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><input type="text" value="${item.desc}" onchange="editExpense(${index}, 'desc', this.value)" placeholder="Nome da conta"></td>
+                        <td>
+                            <select onchange="editExpense(${index}, 'cat', this.value)">
+                                ${categorias.map(c => `<option value="${c}" ${c === item.cat ? 'selected' : ''}>${c}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td><input type="number" step="0.01" value="${item.valor}" onchange="editExpense(${index}, 'valor', this.value)"></td>
+                        <td><input type="text" value="${item.venc}" onchange="editExpense(${index}, 'venc', this.value)" placeholder="DD/MM/AAAA"></td>
+                        <td>
+                            <select onchange="editExpense(${index}, 'status', this.value)">
+                                <option value="PAGO" ${item.status === 'PAGO' ? 'selected' : ''}>PAGO</option>
+                                <option value="À PAGAR" ${item.status === 'À PAGAR' ? 'selected' : ''}>À PAGAR</option>
+                                <option value="GUARDADO" ${item.status === 'GUARDADO' ? 'selected' : ''}>GUARDADO</option>
+                            </select>
+                        </td>
+                        <td><input type="text" value="${item.parc}" onchange="editExpense(${index}, 'parc', this.value)" placeholder="Ex: 1/12"></td>
+                        <td><button class="action-btn btn-danger" onclick="deleteExpense(${index})">X</button></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
 
             let saldo = totalEntradas - totalSaidas;
             document.getElementById('totalEntradas').innerText = formatCurrency(totalEntradas);
@@ -305,7 +341,8 @@
             currentYear = year;
             currentMonth = month;
             saveDB();
-            init();
+            populateSelectors();
+            render();
         }
 
         window.onload = init;

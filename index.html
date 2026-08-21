@@ -197,7 +197,7 @@
         <button class="btn btn-secondary btn-sm" onclick="exportDataJSON()">📥 Backup</button>
         <label class="btn btn-secondary btn-sm" style="cursor: pointer;">
           📤 Restaurar
-          <input type="file" accept=".json" style="display:none;" onchange="importDataJSON(event)">
+          <input type="file" id="importInput" accept=".json" style="display:none;" onchange="importDataJSON(event)">
         </label>
         <button class="btn btn-secondary btn-sm" onclick="exportCSV()">📊 CSV</button>
         <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨️ PDF</button>
@@ -400,7 +400,7 @@
         <div class="modal-body">
           <div>
             <label style="font-size: 0.8rem; color: var(--text-muted);">Descrição *</label>
-            <input type="text" id="expDesc" placeholder="Ex: PRESTAÇÃO CASA, CARRO, LUZ..." required style="width: 100%;">
+            <input type="text" id="expDesc" placeholder="Ex: PRESTAÇÃO CASA, CARRO..." required style="width: 100%;">
           </div>
 
           <div class="form-row-2">
@@ -704,7 +704,7 @@
 
     function confirmResetCache() {
       showCustomConfirm("Limpar Cache e Reiniciar", "Deseja realmente limpar todos os dados do cache do navegador e reiniciar o sistema limpo em 2026?", () => {
-        localStorage.removeItem('financas_app_cache'); state = JSON.parse(JSON.stringify(INITIAL_SCHEMA)); syncToCloud(); renderYears(); renderTabs(); fillSelects(); render(); showToast("Cache limpo com sucesso!");
+        localStorage.removeItem('financas_app_cache'); state = JSON.parse(JSON.stringify(INITIAL_SCHEMA)); syncToCloud(true); renderYears(); renderTabs(); fillSelects(); render(); showToast("Cache limpo com sucesso!");
       }, '🧹');
     }
 
@@ -726,11 +726,16 @@
     }
 
     let saveTimeout = null;
-    function syncToCloud() {
+    function syncToCloud(immediate = false) {
       localStorage.setItem('financas_app_cache', JSON.stringify(state));
       if (!db) return;
       setSyncStatus(true); clearTimeout(saveTimeout);
-      saveTimeout = setTimeout(() => { db.collection("financas").doc("dados_gerais").set(state).then(() => setSyncStatus(false)).catch(e => { console.error("Erro ao salvar:", e); setSyncStatus(false); }); }, 500);
+      
+      if (immediate) {
+          db.collection("financas").doc("dados_gerais").set(state).then(() => setSyncStatus(false)).catch(e => { console.error("Erro ao salvar:", e); setSyncStatus(false); });
+      } else {
+          saveTimeout = setTimeout(() => { db.collection("financas").doc("dados_gerais").set(state).then(() => setSyncStatus(false)).catch(e => { console.error("Erro ao salvar:", e); setSyncStatus(false); }); }, 500);
+      }
     }
 
     function toggleTheme() { const html = document.documentElement; html.className = html.classList.contains('dark') ? 'light' : 'dark'; }
@@ -742,9 +747,10 @@
     }
 
     function findExpenseGlobal(id) {
+        const idStr = String(id);
         for (let y in state.years) {
             for (let m in state.years[y]) {
-                const exp = state.years[y][m].expenses.find(e => e.id === id);
+                const exp = state.years[y][m].expenses.find(e => String(e.id) === idStr);
                 if (exp) return { exp, year: y, month: m, array: state.years[y][m].expenses };
             }
         }
@@ -956,11 +962,11 @@
 
           let cardInfo = '';
           if (isFuture) {
-             cardInfo = `<span style="font-size: 0.7rem; color: var(--accent-blue); display:block; margin-top: 3px; font-weight: 700;"><i class="fas fa-forward"></i> Fatura de ${e.originalMonthName}/${e.originalYear}</span>`;
+             cardInfo = `<span style="font-size: 0.7rem; color: var(--accent-blue); display:block; margin-top: 3px; font-weight: 700;">⏭️ Fatura de ${e.originalMonthName}/${e.originalYear}</span>`;
           } else if (isPastPurchase) {
              const [dD, mD, yD] = e.dataDespesa.split('/');
              const mNameStr = MONTHS[parseInt(mD, 10) - 1];
-             cardInfo = `<span style="font-size: 0.7rem; color: var(--text-muted); display:block; margin-top: 3px; font-weight: 600;"><i class="fas fa-history"></i> Comprado em ${mNameStr}/${yD}</span>`;
+             cardInfo = `<span style="font-size: 0.7rem; color: var(--text-muted); display:block; margin-top: 3px; font-weight: 600;">🛒 Comprado em ${mNameStr}/${yD}</span>`;
           }
 
           tbody.innerHTML += `
@@ -1092,7 +1098,6 @@
         const obs = document.getElementById('expObs').value.trim();
         const isRepeat = document.getElementById('expRepeat').checked;
 
-        // Auto-save categoria
         const catInput = document.getElementById('expCat').value.trim().toUpperCase();
         const cat = catInput || 'OUTROS';
         if (catInput && !state.categories.some(c => c.name.toUpperCase() === catInput)) {
@@ -1155,7 +1160,7 @@
               if (repType === 'installments') { parcStr = `${currentInstNum}/${totInst}`; }
 
               state.years[targetYearStr][targetMonthName].expenses.push({
-                id: 'e_' + Date.now() + '_' + i + '_' + Math.random().toString(36).substr(2, 4),
+                id: String('e_' + Date.now() + '_' + i + '_' + Math.random().toString(36).substr(2, 4)),
                 descricao: desc, valor: val, categoria: cat, formaPgto: pay,
                 status: i === 0 ? stat : 'À PAGAR',
                 vencimento: targetDueDate, dataDespesa: displayBuyDate,
@@ -1168,7 +1173,7 @@
             showToast(`${countToGen} repetições geradas até ${finalYear}!`);
           } else {
             state.years[targetStartYearStr][targetStartMonthName].expenses.push({
-              id: 'e_' + Date.now(), descricao: desc, valor: val, categoria: cat, formaPgto: pay, status: stat,
+              id: String('e_' + Date.now() + Math.random()), descricao: desc, valor: val, categoria: cat, formaPgto: pay, status: stat,
               vencimento: displayDate, dataDespesa: displayBuyDate, parcela: parc, obs: obs
             });
             state.currentYear = targetStartYearStr; state.currentMonth = targetStartMonthName; showToast('Despesa salva com sucesso!');
@@ -1186,7 +1191,7 @@
       const result = findExpenseGlobal(id);
       if (!result) return;
       const exp = result.exp;
-      const dup = { ...exp, id: 'e_' + Date.now(), descricao: exp.descricao + ' (Cópia)' };
+      const dup = { ...exp, id: String('e_' + Date.now()), descricao: exp.descricao + ' (Cópia)' };
       state.years[result.year][result.month].expenses.push(dup);
       render(); syncToCloud(); showToast('Despesa duplicada!');
     }
@@ -1274,7 +1279,7 @@
       const type = document.querySelector('input[name="yType"]:checked').value;
       if (type === 'zero') { state.years[y] = createEmptyYear(); } else {
         const currentData = state.years[state.currentYear] || {}; const newY = {};
-        MONTHS.forEach(m => { const src = currentData[m] || { incomes: [], expenses: [] }; newY[m] = { incomes: JSON.parse(JSON.stringify(src.incomes || [])), expenses: (src.expenses || []).map(exp => ({ ...exp, id: 'e_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4), status: 'À PAGAR' })) }; });
+        MONTHS.forEach(m => { const src = currentData[m] || { incomes: [], expenses: [] }; newY[m] = { incomes: JSON.parse(JSON.stringify(src.incomes || [])), expenses: (src.expenses || []).map(exp => ({ ...exp, id: String('e_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4)), status: 'À PAGAR' })) }; });
         state.years[y] = newY;
       }
       state.currentYear = y; closeModal('yearModal'); renderYears(); renderTabs(); render(); syncToCloud(); showToast(`Ano ${y} criado com sucesso!`);
@@ -1369,78 +1374,85 @@
 
     function exportDataJSON() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2)); const a = document.createElement('a'); a.href = dataStr; a.download = `backup_financas_${state.currentYear}.json`; a.click(); showToast('Backup JSON gerado com sucesso!'); }
     
-    // ======== NOVO CONVERSOR AUTOMÁTICO ======== 
+    // ====== LÓGICA DE IMPORTAÇÃO CORRIGIDA (SEM CONFLITO COM A NUVEM) ======
     function importDataJSON(e) {
       const f = e.target.files[0]; if (!f) return; const r = new FileReader();
       r.onload = ev => {
         try {
           const imported = JSON.parse(ev.target.result);
           if (Array.isArray(imported)) {
-             // É o backup antigo! Vamos converter:
-             const newState = JSON.parse(JSON.stringify(INITIAL_SCHEMA));
+             let newState = JSON.parse(JSON.stringify(INITIAL_SCHEMA));
              newState.years = {}; 
-             const cardsMap = {};
-             let cardCounter = 1;
+             const cardsMap = {}; let cardCounter = 1;
 
              imported.forEach(item => {
-                 const [yE, mE, dE] = item.effectiveDate.split('-');
-                 const yNumE = parseInt(yE, 10);
-                 const mNameE = MONTHS[parseInt(mE, 10) - 1];
+                 try {
+                     const effStr = item.effectiveDate || item.date || "";
+                     if (!effStr.includes('-')) return;
 
-                 const [yD, mD, dD] = item.date.split('-');
+                     const [yE, mE, dE] = effStr.split('-');
+                     const yNumE = parseInt(yE, 10);
+                     const mNameE = MONTHS[parseInt(mE, 10) - 1];
 
-                 if (!newState.years[yE]) newState.years[yE] = createEmptyYear();
+                     const dateStr = item.date || effStr;
+                     const [yD, mD, dD] = dateStr.split('-');
 
-                 if (item.type === 'income') {
-                     newState.years[yE][mNameE].incomes.push({ name: item.description, value: item.amount });
-                 } else {
-                     let payMethod = item.method;
-                     if (payMethod === 'money') payMethod = 'DINHEIRO';
-                     else if (payMethod && payMethod.startsWith('card_')) {
-                         if (!cardsMap[payMethod]) {
-                             cardsMap[payMethod] = `Cartão ${cardCounter++}`;
-                             newState.cards.push({ id: payMethod, name: cardsMap[payMethod], type: 'fixed', closingDay: 1, dueDay: parseInt(dE, 10) });
+                     if (!newState.years[yE]) newState.years[yE] = createEmptyYear();
+
+                     if (item.type === 'income') {
+                         newState.years[yE][mNameE].incomes.push({ name: item.description || "Renda", value: Number(item.amount) || 0 });
+                     } else {
+                         let payMethod = item.method || "DINHEIRO";
+                         if (payMethod === 'money') payMethod = 'DINHEIRO';
+                         else if (payMethod.startsWith('card_')) {
+                             if (!cardsMap[payMethod]) {
+                                 cardsMap[payMethod] = `Cartão ${cardCounter++}`;
+                                 if (!newState.cards) newState.cards = [];
+                                 newState.cards.push({ id: payMethod, name: cardsMap[payMethod], type: 'fixed', closingDay: 1, dueDay: parseInt(dE, 10) || 10 });
+                             }
+                             payMethod = cardsMap[payMethod];
                          }
-                         payMethod = cardsMap[payMethod];
+
+                         let parcela = ''; let desc = item.description || "Despesa";
+                         const match = desc.match(/\((\d+\/\d+)\)$/);
+                         if (match) { parcela = match[1]; desc = desc.replace(/\s*\(\d+\/\d+\)$/, ''); }
+
+                         newState.years[yE][mNameE].expenses.push({
+                             id: String(item.id || ('e_' + Date.now() + Math.random())),
+                             descricao: desc, valor: Number(item.amount) || 0,
+                             categoria: item.category || 'OUTROS', formaPgto: payMethod,
+                             status: item.status === 'paid' ? 'PAGO' : 'À PAGAR',
+                             vencimento: `${dE}/${mE}/${yE}`, dataDespesa: `${dD}/${mD}/${yD}`,
+                             parcela: parcela, obs: ''
+                         });
                      }
 
-                     let parcela = '';
-                     const match = item.description.match(/\((\d+\/\d+)\)$/);
-                     let desc = item.description;
-                     if (match) {
-                         parcela = match[1];
-                         desc = desc.replace(/\s*\(\d+\/\d+\)$/, ''); // Tira a parcela do nome
+                     if (item.category && !newState.categories.some(c => c.name.toUpperCase() === item.category.toUpperCase())) {
+                         newState.categories.push({ name: item.category, color: '#38bdf8' }); 
                      }
+                 } catch (itemErr) { console.warn("Falha ao processar item do backup", itemErr); }
+             });
 
-                     newState.years[yE][mNameE].expenses.push({
-                         id: item.id || ('e_' + Date.now() + Math.random()),
-                         descricao: desc,
-                         valor: item.amount,
-                         categoria: item.category || 'OUTROS',
-                         formaPgto: payMethod,
-                         status: item.status === 'paid' ? 'PAGO' : 'À PAGAR',
-                         vencimento: `${dE}/${mE}/${yE}`,
-                         dataDespesa: `${dD}/${mD}/${yD}`,
-                         parcela: parcela,
-                         obs: ''
-                     });
-                 }
-
-                 if (item.category && !newState.categories.some(c => c.name.toUpperCase() === item.category.toUpperCase())) {
-                     newState.categories.push({ name: item.category, color: '#38bdf8' }); 
-                 }
+             Object.keys(newState.years).forEach(y => {
+                 MONTHS.forEach(m => {
+                     const incs = newState.years[y][m].incomes;
+                     if (incs.length > 2) { newState.years[y][m].incomes = incs.filter(i => i.value > 0 || (i.name !== "Salário 1" && i.name !== "Salário 2")); }
+                 });
              });
 
              state = sanitizeData(newState);
-             renderYears(); renderTabs(); fillSelects(); render(); syncToCloud();
+             renderYears(); renderTabs(); fillSelects(); render(); syncToCloud(true);
              showToast('Backup antigo convertido e importado!');
           }
           else if (imported && imported.years) {
              state = sanitizeData(imported);
-             renderYears(); renderTabs(); fillSelects(); render(); syncToCloud();
+             renderYears(); renderTabs(); fillSelects(); render(); syncToCloud(true);
              showToast('Dados restaurados com sucesso!');
+          } else {
+             showCustomAlert("Formato Desconhecido", "O arquivo não é um backup compatível.", "❌");
           }
-        } catch (err) { showCustomAlert("Erro de Importação", "Arquivo JSON inválido: " + err.message, "❌"); }
+        } catch (err) { showCustomAlert("Erro de Importação", "Arquivo JSON inválido: " + err.message, "❌"); } 
+        finally { e.target.value = ''; } // Libera o input para permitir selecionar o mesmo arquivo novamente
       }; r.readAsText(f);
     }
 

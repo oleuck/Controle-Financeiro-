@@ -317,6 +317,7 @@
                     <th class="sortable" onclick="sortTable('descricao')">Descrição ⇅</th>
                     <th class="sortable" onclick="sortTable('categoria')">Categoria ⇅</th>
                     <th class="sortable" onclick="sortTable('valor')">Valor (R$) ⇅</th>
+                    <!-- INVERSÃO REALIZADA AQUI: COMPRA ANTES DE VENCIMENTO -->
                     <th class="sortable" onclick="sortTable('dataDespesa')">Data Compra ⇅</th>
                     <th class="sortable" onclick="sortTable('vencimento')">Vencimento ⇅</th>
                     <th class="sortable" onclick="sortTable('status')">Status ⇅</th>
@@ -442,12 +443,12 @@
             </div>
           </div>
 
-          <div class="form-row-2">
+          <div class="form-row-2" id="rowParcObs">
             <div id="standaloneParcWrap">
               <label style="font-size: 0.8rem; color: var(--text-muted);">Parcela Avulsa (Ex: 1/12)</label>
               <input type="text" id="expParc" placeholder="Ex: 1/12" style="width: 100%;">
             </div>
-            <div id="obsWrap" style="grid-column: span 1;">
+            <div id="obsWrap">
               <label style="font-size: 0.8rem; color: var(--text-muted);">Observações</label>
               <input type="text" id="expObs" placeholder="Ex: Pago via Pix..." style="width: 100%;">
             </div>
@@ -469,13 +470,11 @@
                 </label>
               </div>
 
-              <!-- Opção para Conta Fixa -->
               <div id="repFixedFields" style="grid-column: span 2; display: block;">
                   <label style="font-size: 0.75rem; color: var(--text-muted);">Repetir por quantos meses no futuro?</label>
                   <input type="number" min="2" max="360" id="repMonths" value="12" style="width: 100%;">
               </div>
 
-              <!-- Opção para Parcelado -->
               <div id="repInstFields" style="display: none; grid-column: span 2; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
                 <div>
                   <label style="font-size: 0.75rem; color: var(--text-muted);">Total de Parcelas:</label>
@@ -888,7 +887,7 @@
 
       let hasCats = false;
       catArray.forEach(item => {
-        if (item.val > 0) { // SÓ MOSTRA AS ATIVAS (MAIORES QUE ZERO)
+        if (item.val > 0) {
             hasCats = true;
             const pct = sumCategorized > 0 ? (item.val / sumCategorized) * 100 : 0;
             catList.innerHTML += `
@@ -915,10 +914,9 @@
       const data = getMonthData();
       let allItems = [...data.expenses];
 
-      // Busca faturas futuras (comprado neste mês, vence depois)
       for(let y in state.years) {
           for(let m in state.years[y]) {
-              if (y == currentYNum && m == state.currentMonth) continue; // Pula o mes atual real
+              if (y == currentYNum && m == state.currentMonth) continue;
 
               state.years[y][m].expenses.forEach(fe => {
                   if(fe.dataDespesa && fe.dataDespesa.endsWith(currentSuffix)) {
@@ -970,14 +968,13 @@
 
           let cardInfo = '';
           if (isFuture) {
-             cardInfo = `<span style="font-size: 0.7rem; color: var(--accent-blue); display:block; margin-top: 3px; font-weight: 700;">📅 Fatura de ${e.originalMonthName}/${e.originalYear}</span>`;
+             cardInfo = `<span style="font-size: 0.7rem; color: var(--accent-blue); display:block; margin-top: 3px; font-weight: 700;">⏭️ Fatura de ${e.originalMonthName}/${e.originalYear}</span>`;
           } else if (isPastPurchase) {
              const [dD, mD, yD] = e.dataDespesa.split('/');
              const mNameStr = MONTHS[parseInt(mD, 10) - 1];
              cardInfo = `<span style="font-size: 0.7rem; color: var(--text-muted); display:block; margin-top: 3px; font-weight: 600;">🛒 Comprado em ${mNameStr}/${yD}</span>`;
           }
 
-          // A COLUNA DE DATA COMPRA E VENCIMENTO FORAM INVERTIDAS AQUI CONFORME O SOLICITADO
           tbody.innerHTML += `
             <tr class="${rowClass}">
               <td><strong>${e.formaPgto || '-'}</strong></td>
@@ -1038,7 +1035,6 @@
       }
     }
 
-    // OCULTA O CAMPO DE PARCELA AVULSA QUANDO A CAIXINHA ESTÁ MARCADA (RESOLVE A DUPLICIDADE)
     function toggleRepeatFields(checked) {
       document.getElementById('repFields').style.display = checked ? 'block' : 'none';
       document.getElementById('standaloneParcWrap').style.display = checked ? 'none' : 'block';
@@ -1329,7 +1325,12 @@
 
     function delPay(idx) { showCustomConfirm("Excluir", "Deseja excluir esta forma de pagamento?", () => { state.paymentMethods.splice(idx, 1); renderPayList(); fillSelects(); render(); syncToCloud(); showToast('Excluída!'); }, '💳'); }
 
-    // BOTÃO EDITAR CARTÃO NO MODAL
+    function openCardModal() { renderCardList(); toggleCardTypeUI(); openModal('cardModal'); }
+    function toggleCardTypeUI() {
+      const type = document.getElementById('cardType').value; const fixedFields = document.getElementById('cardFixedFields'); const rollingFields = document.getElementById('cardRollingFields');
+      if (type === 'rolling') { fixedFields.style.display = 'none'; rollingFields.style.display = 'grid'; document.getElementById('closingDay').required = false; document.getElementById('dueDay').required = false; } else { fixedFields.style.display = 'grid'; rollingFields.style.display = 'none'; document.getElementById('closingDay').required = true; document.getElementById('dueDay').required = true; }
+    }
+
     function editCard(idx) {
         const c = state.cards[idx];
         document.getElementById('cardIdToEdit').value = c.id;
@@ -1345,14 +1346,11 @@
         document.getElementById('btnSalvarCartao').innerText = "💾 Atualizar Cartão";
     }
 
-    function openCardModal() { renderCardList(); toggleCardTypeUI(); openModal('cardModal'); }
-    function toggleCardTypeUI() {
-      const type = document.getElementById('cardType').value; const fixedFields = document.getElementById('cardFixedFields'); const rollingFields = document.getElementById('cardRollingFields');
-      if (type === 'rolling') { fixedFields.style.display = 'none'; rollingFields.style.display = 'grid'; document.getElementById('closingDay').required = false; document.getElementById('dueDay').required = false; } else { fixedFields.style.display = 'grid'; rollingFields.style.display = 'none'; document.getElementById('closingDay').required = true; document.getElementById('dueDay').required = true; }
-    }
-
     function saveCardFromModal(e) {
-      e.preventDefault(); const type = document.getElementById('cardType').value; const name = document.getElementById('cardName').value.trim(); if(!name) return;
+      e.preventDefault(); 
+      const type = document.getElementById('cardType').value; 
+      const name = document.getElementById('cardName').value.trim(); 
+      if(!name) return;
       
       const editId = document.getElementById('cardIdToEdit').value;
       if (editId) {

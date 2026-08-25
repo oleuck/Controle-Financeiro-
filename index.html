@@ -90,7 +90,6 @@
     .kpi-value { font-size: 1.35rem; font-weight: 700; margin: 0.25rem 0; }
     .kpi-subtext { font-size: 0.75rem; color: var(--text-muted); }
 
-    /* NOVO: Potes de Planejamento (Ciclos) */
     .plan-box { background: var(--bg-secondary); padding: 1.15rem; border-radius: 0.75rem; box-shadow: var(--card-shadow); border: 1px solid var(--border-color); border-top: 4px solid var(--accent-blue); }
     .plan-box:nth-child(2) { border-top-color: var(--accent-yellow); }
     .plan-box:nth-child(3) { border-top-color: var(--accent-purple); }
@@ -101,7 +100,7 @@
     .card-header { padding: 0.9rem 1.15rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background-color: rgba(255, 255, 255, 0.01); }
     .card-body { padding: 1.15rem; }
 
-    .income-item { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0.75rem; background-color: var(--bg-tertiary); border-radius: 0.5rem; margin-bottom: 0.5rem; border: 1px solid var(--border-color); }
+    .income-item { display: flex; flex-direction: column; padding: 0.6rem 0.75rem; background-color: var(--bg-tertiary); border-radius: 0.5rem; margin-bottom: 0.5rem; border: 1px solid var(--border-color); }
     .cat-item { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.75rem; }
     .cat-header-line { display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 600; }
     .cat-bar-bg { width: 100%; height: 6px; background-color: var(--bg-tertiary); border-radius: 9999px; overflow: hidden; }
@@ -117,9 +116,6 @@
     td { padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
     tbody tr:hover { background-color: rgba(255, 255, 255, 0.02); }
 
-    /* Estilo do Agrupador da Tabela */
-    .group-header td { background-color: var(--bg-tertiary); color: var(--text-main); font-weight: bold; text-align: center; padding: 10px; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; }
-
     .status-badge { padding: 0.2rem 0.55rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 700; cursor: pointer; display: inline-block; user-select: none; transition: transform 0.1s; }
     .status-badge:hover { transform: scale(1.05); }
     .status-pago { background: var(--accent-green-bg); color: var(--accent-green); border: 1px solid var(--accent-green); }
@@ -130,7 +126,6 @@
     .cat-tag { padding: 0.15rem 0.5rem; border-radius: 0.35rem; font-size: 0.75rem; font-weight: 600; }
     .parcela-badge { background-color: var(--bg-tertiary); color: var(--text-muted); padding: 0.15rem 0.4rem; border-radius: 0.35rem; font-size: 0.75rem; font-weight: 600; }
 
-    /* Estilo Especial para Faturas Fantasmas (Meses Futuros) */
     .future-row { opacity: 0.45; background-color: rgba(255, 255, 255, 0.02); }
     .future-row td { color: var(--text-muted); }
     .future-row .cat-tag { filter: grayscale(1); }
@@ -184,7 +179,6 @@
 </head>
 <body>
 
-  <!-- ================= APLICAÇÃO PRINCIPAL ================= -->
   <div id="appContainer" style="display: flex; flex-direction: column; min-height: 100vh;">
     <header>
       <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -200,8 +194,6 @@
         <button class="btn btn-secondary btn-sm" onclick="openCatModal()">🏷️ Categorias</button>
         <button class="btn btn-secondary btn-sm" onclick="openPayModal()">💵 Formas Pgto</button>
         <button class="btn btn-secondary btn-sm" onclick="openCardModal()" style="color: var(--accent-yellow);">💳 Cartões (Faturas)</button>
-        <button class="btn btn-secondary btn-sm" onclick="launchFerias()">🏖️ Férias</button>
-        <button class="btn btn-secondary btn-sm" onclick="launch13()">🎁 13º</button>
         <button class="btn btn-secondary btn-sm" onclick="exportDataJSON()">📥 Backup</button>
         <label class="btn btn-secondary btn-sm" style="cursor: pointer;">
           📤 Restaurar
@@ -224,7 +216,6 @@
 
     <main class="main-container">
       
-      <!-- Visão Mensal -->
       <div id="monthView" style="display: flex; flex-direction: column; gap: 1.25rem;">
         
         <section class="kpi-grid">
@@ -260,11 +251,11 @@
           </div>
         </section>
 
-        <!-- NOVO: OS 3 POTES DE PLANEJAMENTO -->
+        <!-- OS 3 POTES DE PLANEJAMENTO -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
             <div class="plan-box">
               <h4 style="color: var(--accent-blue); margin-bottom: 8px; display: flex; justify-content: space-between;">
-                <span>🗓️ Ciclo 1 (Salário)</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Dia 01 ao <span id="lblDate1"></span></span>
+                <span>🗓️ Ciclo 1 (Salário)</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Até dia <span id="lblDate1"></span></span>
               </h4>
               <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">
                 <span>Entrada: <strong id="planInc1" style="color: var(--accent-green);">R$ 0,00</strong></span>
@@ -275,7 +266,7 @@
 
             <div class="plan-box">
               <h4 style="color: var(--accent-yellow); margin-bottom: 8px; display: flex; justify-content: space-between;">
-                <span>🗓️ Ciclo 2 (Adiantamento)</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Dia <span id="lblDate2A"></span> ao <span id="lblDate2B"></span></span>
+                <span>🗓️ Ciclo 2 (Adiantamento)</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Do dia <span id="lblDate2A"></span> ao <span id="lblDate2B"></span></span>
               </h4>
               <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">
                 <span>Entrada: <strong id="planInc2" style="color: var(--accent-green);">R$ 0,00</strong></span>
@@ -286,7 +277,7 @@
 
             <div class="plan-box">
               <h4 style="color: var(--accent-purple); margin-bottom: 8px; display: flex; justify-content: space-between;">
-                <span>🗓️ Ciclo 3 (Extra/PPR)</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Dia <span id="lblDate3"></span> em diante</span>
+                <span>🗓️ Ciclo 3 (Flash/Extra)</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Dia <span id="lblDate3"></span> em diante</span>
               </h4>
               <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">
                 <span>Entrada: <strong id="planInc3" style="color: var(--accent-green);">R$ 0,00</strong></span>
@@ -354,6 +345,7 @@
             </div>
 
             <div class="table-container">
+              <!-- TABELA LIVRE NOVAMENTE (SÓ LINHAS) -->
               <table>
                 <thead>
                   <tr>
@@ -385,7 +377,6 @@
 
       </div>
 
-      <!-- Visão Anual Consolidada -->
       <div id="annualView" style="display: none; flex-direction: column; gap: 1.25rem;">
         <section class="kpi-grid">
           <div class="kpi-card kpi-incomes"><div class="kpi-title"><span>Entradas no Ano</span><span>📈</span></div><div class="kpi-value" id="annIncomes" style="color: var(--accent-green);">R$ 0,00</div><div class="kpi-subtext">Soma dos 12 meses</div></div>
@@ -431,7 +422,7 @@
     </main>
   </div>
 
-  <!-- ================= MODAIS DE FORMULÁRIO ================= -->
+  <!-- ================= MODAIS ================= -->
   
   <div class="modal-overlay" id="expenseModal">
     <div class="modal-box">
@@ -564,7 +555,18 @@
         <div class="modal-body">
           <div><label style="font-size: 0.8rem; color: var(--text-muted);">Nome da Renda *</label><input type="text" id="incName" required style="width: 100%;"></div>
           <div><label style="font-size: 0.8rem; color: var(--text-muted);">Valor (R$) *</label><input type="number" step="0.01" min="0.01" id="incVal" required style="width: 100%;"></div>
-          <label style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;"><input type="checkbox" id="incAll"> Aplicar em todos os 12 meses deste ano</label>
+          <!-- NOVO: Data da Receita -->
+          <div>
+              <label style="font-size: 0.8rem; color: var(--text-muted);">Data de Recebimento *</label>
+              <input type="date" id="incDate" required style="width: 100%;">
+          </div>
+          <div style="display: flex; gap: 5px; margin-top: 5px;">
+              <button type="button" class="btn btn-secondary btn-sm" style="flex:1; justify-content:center; padding: 4px;" onclick="autoFillIncome('Salário')">Salário</button>
+              <button type="button" class="btn btn-secondary btn-sm" style="flex:1; justify-content:center; padding: 4px;" onclick="autoFillIncome('Adiantamento')">Adiantam.</button>
+              <button type="button" class="btn btn-secondary btn-sm" style="flex:1; justify-content:center; padding: 4px;" onclick="autoFillIncome('Flash')">Flash</button>
+          </div>
+          
+          <label style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer; margin-top: 10px; display:block;"><input type="checkbox" id="incAll"> Aplicar em todos os 12 meses deste ano</label>
         </div>
         <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeModal('incomeModal')">Cancelar</button><button type="submit" class="btn btn-success">Salvar</button></div>
       </form>
@@ -676,7 +678,6 @@
 
   <div id="toast">Alterações salvas!</div>
 
-  <!-- ================= LÓGICA E JAVASCRIPT ================= -->
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBEdIIZlNHr9drPwu5RqY5e2muGOxMiKKg",
@@ -700,7 +701,7 @@
 
     function createEmptyYear() {
       const y = {};
-      MONTHS.forEach(m => { y[m] = { incomes: [{ name: "Salário", value: 0 }, { name: "Adiantamento", value: 0 }], expenses: [] }; });
+      MONTHS.forEach(m => { y[m] = { incomes: [], expenses: [] }; });
       return y;
     }
 
@@ -788,26 +789,23 @@
       localStorage.setItem('financas_app_cache', JSON.stringify(state));
       if (!db) return;
       setSyncStatus(true); clearTimeout(saveTimeout);
-      
-      if (immediate) {
-          db.collection("financas").doc("dados_gerais").set(state).then(() => setSyncStatus(false)).catch(e => { console.error("Erro ao salvar:", e); setSyncStatus(false); });
-      } else {
-          saveTimeout = setTimeout(() => { db.collection("financas").doc("dados_gerais").set(state).then(() => setSyncStatus(false)).catch(e => { console.error("Erro ao salvar:", e); setSyncStatus(false); }); }, 500);
-      }
+      if (immediate) { db.collection("financas").doc("dados_gerais").set(state).then(() => setSyncStatus(false)).catch(e => { console.error("Erro ao salvar:", e); setSyncStatus(false); }); } else { saveTimeout = setTimeout(() => { db.collection("financas").doc("dados_gerais").set(state).then(() => setSyncStatus(false)).catch(e => { console.error("Erro ao salvar:", e); setSyncStatus(false); }); }, 500); }
     }
 
     function toggleTheme() { const html = document.documentElement; html.className = html.classList.contains('dark') ? 'light' : 'dark'; }
 
-    // ====== LÓGICA DOS 3 CICLOS DO CALENDÁRIO ======
+    // ==========================================
+    // LÓGICA DO CALENDÁRIO (Calculo de Entradas)
+    // ==========================================
     function getCycleDates(year, monthIdx) { 
-        // 1. Quinto dia útil (Conta seg a sex. Se cair sábado, joga pra sexta)
+        // 1. Quinto dia útil (Sábado conta! Se 5º dia for sábado, volta pra sexta)
         let busDays = 0; let curDay = 1; let dSal;
         while (busDays < 5) {
             dSal = new Date(year, monthIdx, curDay);
-            if (dSal.getDay() !== 0 && dSal.getDay() !== 6) busDays++; // Conta só dias de semana
+            if (dSal.getDay() !== 0) busDays++; // 0 = Domingo. Não conta.
             if (busDays < 5) curDay++;
         }
-        if (dSal.getDay() === 6) dSal.setDate(dSal.getDate() - 1);
+        if (dSal.getDay() === 6) dSal.setDate(dSal.getDate() - 1); // Se caiu sabado, vai pra sexta.
 
         // 2. Dia 20 (Adiantamento. Se sabado/domingo, vai pra sexta)
         let dAdi = new Date(year, monthIdx, 20);
@@ -817,18 +815,34 @@
         // 3. Última quinta-feira
         let lastDay = new Date(year, monthIdx + 1, 0);
         let dExt = new Date(lastDay);
-        while (dExt.getDay() !== 4) dExt.setDate(dExt.getDate() - 1);
+        while (dExt.getDay() !== 4) dExt.setDate(dExt.getDate() - 1); // Volta até achar quinta (4)
 
         return {
             sal: dSal.getDate(),
             adi: dAdi.getDate(),
-            ext: dExt.getDate()
+            ext: dExt.getDate(),
+            salDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(dSal.getDate()).padStart(2,'0')}`,
+            adiDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(dAdi.getDate()).padStart(2,'0')}`,
+            extDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(dExt.getDate()).padStart(2,'0')}`
         };
     }
 
+    function autoFillIncome(type) {
+        const currentYNum = parseInt(state.currentYear, 10);
+        const currentMIdx = MONTHS.indexOf(state.currentMonth);
+        const dates = getCycleDates(currentYNum, currentMIdx);
+
+        document.getElementById('incName').value = type;
+        
+        if(type === 'Salário') document.getElementById('incDate').value = dates.salDateStr;
+        else if(type === 'Adiantamento') document.getElementById('incDate').value = dates.adiDateStr;
+        else if(type === 'Flash') document.getElementById('incDate').value = dates.extDateStr;
+    }
+    // ==========================================
+
     function getMonthData(y = state.currentYear, m = state.currentMonth) {
       if (!state.years[y]) state.years[y] = createEmptyYear();
-      if (!state.years[y][m]) state.years[y][m] = { incomes: [{ name: "Salário", value: 0 }, { name: "Adiantamento", value: 0 }], expenses: [] };
+      if (!state.years[y][m]) state.years[y][m] = { incomes: [], expenses: [] };
       return state.years[y][m];
     }
 
@@ -855,21 +869,6 @@
       const wrap = document.getElementById('monthTabs'); if (!wrap) return; wrap.innerHTML = '';
       MONTHS.forEach(m => { const btn = document.createElement('button'); btn.className = `month-btn ${state.currentMonth === m ? 'active' : ''}`; btn.innerText = m; btn.onclick = () => { state.currentMonth = m; renderTabs(); render(); }; wrap.appendChild(btn); });
       const ann = document.createElement('button'); ann.className = `month-btn annual-btn ${state.currentMonth === 'ANNUAL' ? 'active' : ''}`; ann.innerHTML = '📊 Visão Anual'; ann.onclick = () => { state.currentMonth = 'ANNUAL'; renderTabs(); render(); }; wrap.appendChild(ann);
-    }
-
-    function launchFerias() {
-      const periodoStr = prompt("Valor do período de férias (o que você receberia normalmente nesses dias, SEM o adicional):", "0");
-      if (periodoStr === null) return; const periodo = parseFloat(periodoStr.replace(',', '.')); if (isNaN(periodo) || periodo <= 0) { showCustomAlert('Erro', 'Valor inválido.', '❌'); return; }
-      const terco = periodo / 3; const total = periodo + terco;
-      openIncomeModal(); document.getElementById('incName').value = 'Férias (Período + 1/3)'; document.getElementById('incVal').value = total.toFixed(2);
-      showCustomAlert('Férias', `Período: ${fmt(periodo)}\n1/3 Const.: ${fmt(terco)}\nTotal: ${fmt(total)}\n\nO modal de receitas foi preenchido, basta confirmar!`, '🏖️');
-    }
-
-    function launch13() {
-      const valorStr = prompt("Valor da parcela do 13º salário (já líquido):", "0");
-      if (valorStr === null) return; const valor = parseFloat(valorStr.replace(',', '.')); if (isNaN(valor) || valor <= 0) { showCustomAlert('Erro', 'Valor inválido.', '❌'); return; }
-      const parcela = prompt("É a 1ª ou a 2ª parcela? (deixe em branco se for parcela única)", "1");
-      openIncomeModal(); document.getElementById('incName').value = parcela ? `13º Salário (${parcela}ª parcela)` : '13º Salário'; document.getElementById('incVal').value = valor.toFixed(2);
     }
 
     function fillSelects() {
@@ -955,15 +954,25 @@
       const bEl = document.getElementById('kpiBalance'); const bCard = document.getElementById('kpiBalanceCard');
       bEl.innerText = fmt(availableBalance); bCard.className = `kpi-card ${availableBalance >= 0 ? 'kpi-balance-pos' : 'kpi-balance-neg'}`; bEl.style.color = availableBalance >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'; document.getElementById('kpiBalanceIcon').innerText = availableBalance >= 0 ? '✅' : '⚠️';
 
-      // ================= CÁLCULO DOS POTES DE CICLO =================
+      // ================= CÁLCULO DOS POTES DE CICLO (CORRIGIDO PARA DATA EXATA) =================
       const dates = getCycleDates(parseInt(state.currentYear), MONTHS.indexOf(state.currentMonth));
       let incC1 = 0, expC1 = 0, incC2 = 0, expC2 = 0, incC3 = 0, expC3 = 0;
 
       data.incomes.forEach(inc => {
-          let n = (inc.name || '').toLowerCase();
-          if (n.includes('adiantamento')) incC2 += Number(inc.value);
-          else if (n.includes('ppr') || n.includes('13º') || n.includes('férias') || n.includes('ferias') || n.includes('extra')) incC3 += Number(inc.value);
-          else incC1 += Number(inc.value);
+          let day = 1;
+          if (inc.date && inc.date.includes('-')) {
+             day = parseInt(inc.date.split('-')[2], 10);
+          } else {
+             // Fallback pra backups antigos sem data
+             let n = (inc.name || '').toLowerCase();
+             if (n.includes('adiantamento')) day = dates.adi;
+             else if (n.includes('ppr') || n.includes('13º') || n.includes('férias') || n.includes('extra') || n.includes('flash')) day = dates.ext;
+             else day = dates.sal;
+          }
+
+          if (day < dates.adi) incC1 += Number(inc.value);
+          else if (day >= dates.adi && day < dates.ext) incC2 += Number(inc.value);
+          else incC3 += Number(inc.value);
       });
 
       data.expenses.forEach(exp => {
@@ -975,17 +984,14 @@
          }
       });
 
-      // Pote 1
       document.getElementById('lblDate1').innerText = String(dates.adi - 1).padStart(2, '0');
       document.getElementById('planInc1').innerText = fmt(incC1); document.getElementById('planExp1').innerText = fmt(expC1);
       const bC1 = incC1 - expC1; document.getElementById('planBal1').innerText = fmt(bC1); document.getElementById('planBal1').style.color = bC1 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
 
-      // Pote 2
       document.getElementById('lblDate2A').innerText = String(dates.adi).padStart(2, '0'); document.getElementById('lblDate2B').innerText = String(dates.ext - 1).padStart(2, '0');
       document.getElementById('planInc2').innerText = fmt(incC2); document.getElementById('planExp2').innerText = fmt(expC2);
       const bC2 = incC2 - expC2; document.getElementById('planBal2').innerText = fmt(bC2); document.getElementById('planBal2').style.color = bC2 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
 
-      // Pote 3
       document.getElementById('lblDate3').innerText = String(dates.ext).padStart(2, '0');
       document.getElementById('planInc3').innerText = fmt(incC3); document.getElementById('planExp3').innerText = fmt(expC3);
       const bC3 = incC3 - expC3; document.getElementById('planBal3').innerText = fmt(bC3); document.getElementById('planBal3').style.color = bC3 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
@@ -993,9 +999,13 @@
 
       const incList = document.getElementById('incomesList'); incList.innerHTML = '';
       data.incomes.forEach((inc, idx) => {
+        let dateStr = '';
+        if(inc.date) {
+           const p = inc.date.split('-'); dateStr = `<small style="color:var(--text-muted); font-size:0.75rem;">(${p[2]}/${p[1]})</small> `;
+        }
         incList.innerHTML += `
           <div class="income-item">
-            <span style="font-weight:600; font-size:0.85rem;">${inc.name}</span>
+            <span style="font-weight:600; font-size:0.85rem;">${dateStr}${inc.name}</span>
             <div><strong style="color: var(--accent-green); margin-right: 0.5rem; font-size:0.9rem;">${fmt(inc.value)}</strong><button class="btn btn-secondary btn-icon btn-sm" onclick="openIncomeModal(${idx})" title="Editar">✏️</button><button class="btn btn-danger btn-icon btn-sm" onclick="delIncome(${idx})" title="Excluir">🗑️</button></div>
           </div>`;
       });
@@ -1025,13 +1035,14 @@
       renderTable();
     }
 
+    // ===============================================
+    // TABELA LIVRE (SEM DIVISÓRIAS, 100% ORDENÁVEL)
+    // ===============================================
     function renderTable() {
       const currentMIdx = MONTHS.indexOf(state.currentMonth);
       const currentYNum = parseInt(state.currentYear, 10);
       const currentMonthStr = String(currentMIdx + 1).padStart(2, '0');
       const currentSuffix = `${currentMonthStr}/${currentYNum}`;
-
-      const dates = getCycleDates(currentYNum, currentMIdx);
 
       const data = getMonthData();
       let allItems = [...data.expenses];
@@ -1072,68 +1083,49 @@
       let filteredSum = 0;
 
       if (list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhuma despesa encontrada neste mês.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhuma despesa encontrada.</td></tr>`;
       } else {
-        
-        let c1 = [], c2 = [], c3 = [];
         list.forEach(e => {
-            let eDay = 31;
-            if (e.vencimento && e.vencimento.includes('/')) eDay = parseInt(e.vencimento.split('/')[0], 10);
-            if (eDay < dates.adi) c1.push(e);
-            else if (eDay < dates.ext) c2.push(e);
-            else c3.push(e);
+            if (!e.isFutureView) { filteredSum += (Number(e.valor) || 0); }
+
+            const catConfig = state.categories.find(c => c.name.toUpperCase() === (e.categoria || '').toUpperCase()) || { color: '#64748b' };
+            let stClass = 'status-a-pagar';
+            if (e.status === 'PAGO') stClass = 'status-pago';
+            else if (e.status === 'GUARDADO') stClass = 'status-guardado';
+            else if (e.status === 'NÃO APLICÁVEL') stClass = 'status-nao-aplicavel';
+
+            const isFuture = e.isFutureView;
+            const isPastPurchase = !isFuture && e.dataDespesa && !e.dataDespesa.endsWith(currentSuffix);
+            const rowClass = isFuture ? 'future-row' : '';
+
+            let cardInfo = '';
+            if (isFuture) {
+               cardInfo = `<span style="font-size: 0.7rem; color: var(--accent-blue); display:block; margin-top: 3px; font-weight: 700;">⏭️ Fatura de ${e.originalMonthName}/${e.originalYear}</span>`;
+            } else if (isPastPurchase) {
+               const [dD, mD, yD] = e.dataDespesa.split('/');
+               const mNameStr = MONTHS[parseInt(mD, 10) - 1];
+               cardInfo = `<span style="font-size: 0.7rem; color: var(--text-muted); display:block; margin-top: 3px; font-weight: 600;">🛒 Comprado em ${mNameStr}/${yD}</span>`;
+            }
+
+            tbody.innerHTML += `
+              <tr class="${rowClass}">
+                <td><strong>${e.formaPgto || '-'}</strong></td>
+                <td><strong>${e.descricao}</strong> ${cardInfo}</td>
+                <td><span class="cat-tag" style="background:${catConfig.color}20; color:${catConfig.color}; border:1px solid ${catConfig.color}40;"><span class="cat-dot" style="background:${catConfig.color};"></span>${e.categoria}</span></td>
+                <td><strong style="color: var(--accent-red);">${fmt(e.valor)}</strong></td>
+                <td><span style="color: var(--text-muted); font-size:0.8rem;">${e.dataDespesa || '-'}</span></td>
+                <td><span style="color: var(--text-muted); font-size:0.8rem; font-weight:600;">${e.vencimento || '-'}</span></td>
+                <td><span class="status-badge ${stClass}" onclick="toggleStatus('${e.id}')" title="Clique para alternar">${e.status}</span></td>
+                <td>${e.parcela ? `<span class="parcela-badge">${e.parcela}</span>` : '-'}</td>
+                <td><small style="color: var(--text-muted);">${e.obs || ''}</small></td>
+                <td style="text-align: right;">
+                  <button class="btn btn-secondary btn-icon btn-sm" onclick="openExpenseModal('${e.id}')" title="Editar">✏️</button>
+                  <button class="btn btn-secondary btn-icon btn-sm" onclick="duplicateExpense('${e.id}')" title="Duplicar">📑</button>
+                  <button class="btn btn-danger btn-icon btn-sm" onclick="delExpense('${e.id}')" title="Excluir">🗑️</button>
+                </td>
+              </tr>
+            `;
         });
-
-        const renderGroup = (arr, title) => {
-            if(arr.length === 0) return;
-            tbody.innerHTML += `<tr class="group-header"><td colspan="10">${title}</td></tr>`;
-            
-            arr.forEach(e => {
-                if (!e.isFutureView) { filteredSum += (Number(e.valor) || 0); }
-
-                const catConfig = state.categories.find(c => c.name.toUpperCase() === (e.categoria || '').toUpperCase()) || { color: '#64748b' };
-                let stClass = 'status-a-pagar';
-                if (e.status === 'PAGO') stClass = 'status-pago';
-                else if (e.status === 'GUARDADO') stClass = 'status-guardado';
-                else if (e.status === 'NÃO APLICÁVEL') stClass = 'status-nao-aplicavel';
-
-                const isFuture = e.isFutureView;
-                const isPastPurchase = !isFuture && e.dataDespesa && !e.dataDespesa.endsWith(currentSuffix);
-                const rowClass = isFuture ? 'future-row' : '';
-
-                let cardInfo = '';
-                if (isFuture) {
-                   cardInfo = `<span style="font-size: 0.7rem; color: var(--accent-blue); display:block; margin-top: 3px; font-weight: 700;">⏭️ Fatura de ${e.originalMonthName}/${e.originalYear}</span>`;
-                } else if (isPastPurchase) {
-                   const [dD, mD, yD] = e.dataDespesa.split('/');
-                   const mNameStr = MONTHS[parseInt(mD, 10) - 1];
-                   cardInfo = `<span style="font-size: 0.7rem; color: var(--text-muted); display:block; margin-top: 3px; font-weight: 600;">🛒 Comprado em ${mNameStr}/${yD}</span>`;
-                }
-
-                tbody.innerHTML += `
-                  <tr class="${rowClass}">
-                    <td><strong>${e.formaPgto || '-'}</strong></td>
-                    <td><strong>${e.descricao}</strong> ${cardInfo}</td>
-                    <td><span class="cat-tag" style="background:${catConfig.color}20; color:${catConfig.color}; border:1px solid ${catConfig.color}40;"><span class="cat-dot" style="background:${catConfig.color};"></span>${e.categoria}</span></td>
-                    <td><strong style="color: var(--accent-red);">${fmt(e.valor)}</strong></td>
-                    <td><span style="color: var(--text-muted); font-size:0.8rem;">${e.dataDespesa || '-'}</span></td>
-                    <td><span style="color: var(--text-muted); font-size:0.8rem; font-weight:600;">${e.vencimento || '-'}</span></td>
-                    <td><span class="status-badge ${stClass}" onclick="toggleStatus('${e.id}')" title="Clique para alternar">${e.status}</span></td>
-                    <td>${e.parcela ? `<span class="parcela-badge">${e.parcela}</span>` : '-'}</td>
-                    <td><small style="color: var(--text-muted);">${e.obs || ''}</small></td>
-                    <td style="text-align: right;">
-                      <button class="btn btn-secondary btn-icon btn-sm" onclick="openExpenseModal('${e.id}')" title="Editar">✏️</button>
-                      <button class="btn btn-secondary btn-icon btn-sm" onclick="duplicateExpense('${e.id}')" title="Duplicar">📑</button>
-                      <button class="btn btn-danger btn-icon btn-sm" onclick="delExpense('${e.id}')" title="Excluir">🗑️</button>
-                    </td>
-                  </tr>
-                `;
-            });
-        };
-
-        renderGroup(c1, `📍 CICLO 1 (Contas do dia 01 ao dia ${String(dates.adi - 1).padStart(2, '0')} — Pagas com Salário)`);
-        renderGroup(c2, `📍 CICLO 2 (Contas do dia ${String(dates.adi).padStart(2, '0')} ao dia ${String(dates.ext - 1).padStart(2, '0')} — Pagas com Adiantamento)`);
-        renderGroup(c3, `📍 CICLO 3 (Contas do dia ${String(dates.ext).padStart(2, '0')} até o fim do mês — Pagas com Extras/PPR)`);
       }
 
       document.getElementById('tableCount').innerText = `${list.length} itens`;
@@ -1276,7 +1268,7 @@
 
         const targetStartYearStr = String(startYear); const targetStartMonthName = MONTHS[startMonthIdx];
         if (!state.years[targetStartYearStr]) state.years[targetStartYearStr] = createEmptyYear();
-        if (!state.years[targetStartYearStr][targetStartMonthName]) { state.years[targetStartYearStr][targetStartMonthName] = { incomes: [{ name: "Salário 1", value: 0 }, { name: "Salário 2", value: 0 }], expenses: [] }; }
+        if (!state.years[targetStartYearStr][targetStartMonthName]) { state.years[targetStartYearStr][targetStartMonthName] = { incomes: [], expenses: [] }; }
 
         if (id) {
           const result = findExpenseGlobal(id);
@@ -1355,7 +1347,7 @@
               const targetMonthName = MONTHS[targetMonthIndexInYear];
 
               if (!state.years[targetYearStr]) { state.years[targetYearStr] = createEmptyYear(); }
-              if (!state.years[targetYearStr][targetMonthName]) { state.years[targetYearStr][targetMonthName] = { incomes: [{ name: "Salário 1", value: 0 }, { name: "Salário 2", value: 0 }], expenses: [] }; }
+              if (!state.years[targetYearStr][targetMonthName]) { state.years[targetYearStr][targetMonthName] = { incomes: [], expenses: [] }; }
 
               const targetDueDate = `${String(dayNum).padStart(2, '0')}/${String(targetMonthIndexInYear + 1).padStart(2, '0')}/${targetYearStr}`;
               
@@ -1450,8 +1442,12 @@
       if (idx >= 0) {
         const inc = getMonthData().incomes[idx];
         document.getElementById('incModalTitle').innerText = 'Editar Receita'; document.getElementById('incName').value = inc.name; document.getElementById('incVal').value = inc.value;
+        document.getElementById('incDate').value = inc.date || '';
       } else {
         document.getElementById('incModalTitle').innerText = 'Nova Receita'; document.getElementById('incName').value = ''; document.getElementById('incVal').value = '';
+        const currentYNum = parseInt(state.currentYear, 10);
+        const currentMIdx = MONTHS.indexOf(state.currentMonth);
+        document.getElementById('incDate').value = `${currentYNum}-${String(currentMIdx+1).padStart(2,'0')}-01`;
       }
       openModal('incomeModal');
     }
@@ -1461,12 +1457,25 @@
       const idx = parseInt(document.getElementById('incIdx').value, 10);
       const name = document.getElementById('incName').value.trim();
       const val = parseFloat(document.getElementById('incVal').value) || 0;
+      const dateVal = document.getElementById('incDate').value;
       const all = document.getElementById('incAll').checked;
 
       if (all) {
-        MONTHS.forEach(m => { const d = getMonthData(state.currentYear, m); if (idx >= 0 && d.incomes[idx]) d.incomes[idx] = { name, value: val }; else d.incomes.push({ name, value: val }); });
+        MONTHS.forEach((m, mIdx) => { 
+            const d = getMonthData(state.currentYear, m); 
+            // Ajusta a data para refletir o mês em que está sendo copiado (mantendo o dia)
+            let dateToSave = dateVal;
+            if(dateVal && dateVal.includes('-')) {
+                const parts = dateVal.split('-');
+                dateToSave = `${parts[0]}-${String(mIdx + 1).padStart(2, '0')}-${parts[2]}`;
+            }
+            if (idx >= 0 && d.incomes[idx]) d.incomes[idx] = { name, value: val, date: dateToSave }; 
+            else d.incomes.push({ name, value: val, date: dateToSave }); 
+        });
       } else {
-        const d = getMonthData(); if (idx >= 0 && d.incomes[idx]) d.incomes[idx] = { name, value: val }; else d.incomes.push({ name, value: val });
+        const d = getMonthData(); 
+        if (idx >= 0 && d.incomes[idx]) d.incomes[idx] = { name, value: val, date: dateVal }; 
+        else d.incomes.push({ name, value: val, date: dateVal });
       }
       closeModal('incomeModal'); render(); syncToCloud(); showToast('Receita salva!');
     });

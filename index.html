@@ -219,7 +219,6 @@
 
     <main class="main-container">
       
-      <!-- VISÃO MENSAL -->
       <div id="monthView" style="display: flex; flex-direction: column; gap: 1.25rem;">
         
         <section class="kpi-grid">
@@ -247,6 +246,11 @@
             <div class="kpi-title"><span>Total À Pagar</span><span>⏳</span></div>
             <div class="kpi-value" id="kpiPending" style="color: var(--accent-yellow);">R$ 0,00</div>
             <div class="kpi-subtext" id="kpiPendingCount">0 pendentes</div>
+          </div>
+          <div class="kpi-card kpi-saved">
+            <div class="kpi-title"><span>Invest./Guardado</span><span>💎</span></div>
+            <div class="kpi-value" id="kpiSaved" style="color: var(--accent-purple);">R$ 0,00</div>
+            <div class="kpi-subtext">Reservas e poupança</div>
           </div>
         </section>
 
@@ -317,7 +321,6 @@
               </div>
             </div>
 
-            <!-- NOVO: Limites de Cartões -->
             <div class="content-card">
               <div class="card-header">
                 <h2 style="font-size: 0.95rem;">💳 Limite dos Cartões</h2>
@@ -428,7 +431,7 @@
         </div>
       </div>
 
-      <!-- NOVO: VISÃO INVESTIMENTOS -->
+      <!-- VISÃO INVESTIMENTOS -->
       <div id="investView" style="display: none; flex-direction: column; gap: 1.25rem;">
         <div class="kpi-card kpi-saved" style="text-align:center; padding: 3rem;">
             <div class="kpi-title" style="justify-content:center;"><span>Patrimônio / Reservas Acumuladas</span></div>
@@ -585,7 +588,6 @@
     </div>
   </div>
 
-  <!-- NOVO: Modal Pagar Fatura em Lote -->
   <div class="modal-overlay" id="bulkPayModal">
       <div class="modal-box" style="max-width: 400px;">
           <div class="modal-header"><h3>💳 Pagar Fatura Inteira</h3><button class="btn btn-secondary btn-icon" onclick="closeModal('bulkPayModal')">✕</button></div>
@@ -691,7 +693,6 @@
                   </select>
               </div>
           </div>
-          <!-- NOVO: Limite do Cartão -->
           <div>
               <label style="font-size: 0.8rem; color: var(--text-muted);">Limite Total do Cartão (R$) - Para acompanhamento</label>
               <input type="number" id="cardLimit" step="0.01" style="width: 100%;" placeholder="Opcional. Ex: 5000">
@@ -736,6 +737,7 @@
 
   <div id="toast">Alterações salvas!</div>
 
+  <!-- ================= LÓGICA E JAVASCRIPT ================= -->
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBEdIIZlNHr9drPwu5RqY5e2muGOxMiKKg",
@@ -902,7 +904,9 @@
         const currentYNum = parseInt(state.currentYear, 10);
         const currentMIdx = MONTHS.indexOf(state.currentMonth);
         const dates = getCycleDates(currentYNum, currentMIdx);
+
         document.getElementById('incName').value = type;
+        
         if(type === 'Salário') document.getElementById('incDate').value = dates.salDateStr;
         else if(type === 'Adiantamento') document.getElementById('incDate').value = dates.adiDateStr;
         else if(type === 'Flash') document.getElementById('incDate').value = dates.extDateStr;
@@ -1176,13 +1180,31 @@
       const data = getMonthData();
       let allItems = [...data.expenses];
 
+      // Busca faturas futuras (comprado neste mês, vence depois)
       for(let y in state.years) {
           for(let m in state.years[y]) {
-              if (y == currentYNum && m == state.currentMonth) continue;
+              if (y == currentYNum && m == state.currentMonth) continue; // Pula o mes atual real
+
               state.years[y][m].expenses.forEach(fe => {
                   if(fe.dataDespesa && fe.dataDespesa.endsWith(currentSuffix)) {
                       if (!fe.vencimento.endsWith(currentSuffix)) {
-                          allItems.push({ ...fe, isFutureView: true, originalMonthName: m, originalYear: y });
+                          
+                          // Correção do Bug de Fantasmas Repetidos:
+                          // Só mostra fantasma se não for uma repetição (parcela > 1) 
+                          // e só mostramos UM fantasma para contas fixas para não poluir
+                          let isFutureInstallment = false;
+                          if (fe.parcela && fe.parcela.includes('/')) {
+                              const curInst = parseInt(fe.parcela.split('/')[0], 10);
+                              if (curInst > 1) isFutureInstallment = true;
+                          }
+                          
+                          if (!isFutureInstallment) {
+                              // Se for conta fixa repetida infinitamente, vai criar uma chave para mostrar só 1
+                              const ghostKey = `${fe.descricao}-${fe.valor}-${fe.dataDespesa}`;
+                              if (!allItems.some(a => a.ghostKey === ghostKey)) {
+                                  allItems.push({ ...fe, isFutureView: true, originalMonthName: m, originalYear: y, ghostKey: ghostKey });
+                              }
+                          }
                       }
                   }
               });
@@ -1215,45 +1237,45 @@
         tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhuma despesa encontrada.</td></tr>`;
       } else {
         list.forEach(e => {
-            if (!e.isFutureView) { filteredSum += (Number(e.valor) || 0); }
+          if (!e.isFutureView) { filteredSum += (Number(e.valor) || 0); }
 
-            const catConfig = state.categories.find(c => c.name.toUpperCase() === (e.categoria || '').toUpperCase()) || { color: '#64748b' };
-            let stClass = 'status-a-pagar';
-            if (e.status === 'PAGO') stClass = 'status-pago';
-            else if (e.status === 'GUARDADO') stClass = 'status-guardado';
-            else if (e.status === 'NÃO APLICÁVEL') stClass = 'status-nao-aplicavel';
+          const catConfig = state.categories.find(c => c.name.toUpperCase() === (e.categoria || '').toUpperCase()) || { color: '#64748b' };
+          let stClass = 'status-a-pagar';
+          if (e.status === 'PAGO') stClass = 'status-pago';
+          else if (e.status === 'GUARDADO') stClass = 'status-guardado';
+          else if (e.status === 'NÃO APLICÁVEL') stClass = 'status-nao-aplicavel';
 
-            const isFuture = e.isFutureView;
-            const isPastPurchase = !isFuture && e.dataDespesa && !e.dataDespesa.endsWith(currentSuffix);
-            const rowClass = isFuture ? 'future-row' : '';
+          const isFuture = e.isFutureView;
+          const isPastPurchase = !isFuture && e.dataDespesa && !e.dataDespesa.endsWith(currentSuffix);
+          const rowClass = isFuture ? 'future-row' : '';
 
-            let cardInfo = '';
-            if (isFuture) {
-               cardInfo = `<span style="font-size: 0.7rem; color: var(--accent-blue); display:block; margin-top: 3px; font-weight: 700;">⏭️ Fatura de ${e.originalMonthName}/${e.originalYear}</span>`;
-            } else if (isPastPurchase) {
-               const [dD, mD, yD] = e.dataDespesa.split('/');
-               const mNameStr = MONTHS[parseInt(mD, 10) - 1];
-               cardInfo = `<span style="font-size: 0.7rem; color: var(--text-muted); display:block; margin-top: 3px; font-weight: 600;">🛒 Comprado em ${mNameStr}/${yD}</span>`;
-            }
+          let cardInfo = '';
+          if (isFuture) {
+             cardInfo = `<span style="font-size: 0.7rem; color: var(--accent-blue); display:block; margin-top: 3px; font-weight: 700;">⏭️ Fatura de ${e.originalMonthName}/${e.originalYear}</span>`;
+          } else if (isPastPurchase) {
+             const [dD, mD, yD] = e.dataDespesa.split('/');
+             const mNameStr = MONTHS[parseInt(mD, 10) - 1];
+             cardInfo = `<span style="font-size: 0.7rem; color: var(--text-muted); display:block; margin-top: 3px; font-weight: 600;">🛒 Comprado em ${mNameStr}/${yD}</span>`;
+          }
 
-            tbody.innerHTML += `
-              <tr class="${rowClass}">
-                <td><strong>${e.formaPgto || '-'}</strong></td>
-                <td><strong>${e.descricao}</strong> ${cardInfo}</td>
-                <td><span class="cat-tag" style="background:${catConfig.color}20; color:${catConfig.color}; border:1px solid ${catConfig.color}40;"><span class="cat-dot" style="background:${catConfig.color};"></span>${e.categoria}</span></td>
-                <td><strong style="color: var(--accent-red);">${fmt(e.valor)}</strong></td>
-                <td><span style="color: var(--text-muted); font-size:0.8rem;">${e.dataDespesa || '-'}</span></td>
-                <td><span style="color: var(--text-muted); font-size:0.8rem; font-weight:600;">${e.vencimento || '-'}</span></td>
-                <td><span class="status-badge ${stClass}" onclick="toggleStatus('${e.id}')" title="Clique para alternar">${e.status}</span></td>
-                <td>${e.parcela ? `<span class="parcela-badge">${e.parcela}</span>` : '-'}</td>
-                <td><small style="color: var(--text-muted);">${e.obs || ''}</small></td>
-                <td style="text-align: right;">
-                  <button class="btn btn-secondary btn-icon btn-sm" onclick="openExpenseModal('${e.id}')" title="Editar">✏️</button>
-                  <button class="btn btn-secondary btn-icon btn-sm" onclick="duplicateExpense('${e.id}')" title="Duplicar">📑</button>
-                  <button class="btn btn-danger btn-icon btn-sm" onclick="delExpense('${e.id}')" title="Excluir">🗑️</button>
-                </td>
-              </tr>
-            `;
+          tbody.innerHTML += `
+            <tr class="${rowClass}">
+              <td><strong>${e.formaPgto || '-'}</strong></td>
+              <td><strong>${e.descricao}</strong> ${cardInfo}</td>
+              <td><span class="cat-tag" style="background:${catConfig.color}20; color:${catConfig.color}; border:1px solid ${catConfig.color}40;"><span class="cat-dot" style="background:${catConfig.color};"></span>${e.categoria}</span></td>
+              <td><strong style="color: var(--accent-red);">${fmt(e.valor)}</strong></td>
+              <td><span style="color: var(--text-muted); font-size:0.8rem;">${e.dataDespesa || '-'}</span></td>
+              <td><span style="color: var(--text-muted); font-size:0.8rem; font-weight:600;">${e.vencimento || '-'}</span></td>
+              <td><span class="status-badge ${stClass}" onclick="toggleStatus('${e.id}')" title="Clique para alternar">${e.status}</span></td>
+              <td>${e.parcela ? `<span class="parcela-badge">${e.parcela}</span>` : '-'}</td>
+              <td><small style="color: var(--text-muted);">${e.obs || ''}</small></td>
+              <td style="text-align: right;">
+                <button class="btn btn-secondary btn-icon btn-sm" onclick="openExpenseModal('${e.id}')" title="Editar">✏️</button>
+                <button class="btn btn-secondary btn-icon btn-sm" onclick="duplicateExpense('${e.id}')" title="Duplicar">📑</button>
+                <button class="btn btn-danger btn-icon btn-sm" onclick="delExpense('${e.id}')" title="Excluir">🗑️</button>
+              </td>
+            </tr>
+          `;
         });
       }
 
@@ -1519,12 +1541,18 @@
               
               let parcStr = parc; 
               if (repType === 'installments') { parcStr = `${currentInstNum}/${totInst}`; }
+              
+              // Se for conta fixa (Ex: internet repetindo pra sempre), a Data de Compra original não precisa ir para o futuro
+              let buyDateToSave = displayBuyDate;
+              if(repType === 'fixed' && i > 0) {
+                 buyDateToSave = '';
+              }
 
               state.years[targetYearStr][targetMonthName].expenses.push({
                 id: String('e_' + Date.now() + '_' + i + '_' + Math.random().toString(36).substr(2, 4)),
                 descricao: desc, valor: val, categoria: cat, formaPgto: pay,
                 status: i === 0 ? stat : 'À PAGAR',
-                vencimento: targetDueDate, dataDespesa: displayBuyDate,
+                vencimento: targetDueDate, dataDespesa: buyDateToSave,
                 parcela: parcStr, obs: obs
               });
             }
@@ -1733,7 +1761,6 @@
               if (type === 'rolling') { card.rollingDays = document.getElementById('rollingDays').value || 30; } 
               else { card.closingDay = document.getElementById('closingDay').value || 1; card.dueDay = document.getElementById('dueDay').value || 10; }
               
-              // CASCATA (Atualiza os registros passados e futuros com o novo nome)
               for (let y in state.years) {
                   for (let m in state.years[y]) {
                       state.years[y][m].expenses.forEach(exp => {
@@ -1773,7 +1800,6 @@
       });
     }
 
-    // ====== NOVO: PAINEL DE INVESTIMENTOS ======
     function renderInvestments() {
         let total = 0;
         let invList = [];

@@ -194,6 +194,8 @@
         <button class="btn btn-secondary btn-sm" onclick="openCatModal()">🏷️ Categorias</button>
         <button class="btn btn-secondary btn-sm" onclick="openPayModal()">💵 Formas Pgto</button>
         <button class="btn btn-secondary btn-sm" onclick="openCardModal()" style="color: var(--accent-yellow);">💳 Cartões (Faturas)</button>
+        <button class="btn btn-secondary btn-sm" onclick="launchFerias()">🏖️ Férias</button>
+        <button class="btn btn-secondary btn-sm" onclick="launch13()">🎁 13º</button>
         <button class="btn btn-secondary btn-sm" onclick="exportDataJSON()">📥 Backup</button>
         <label class="btn btn-secondary btn-sm" style="cursor: pointer;">
           📤 Restaurar
@@ -201,7 +203,7 @@
         </label>
         <button class="btn btn-secondary btn-sm" onclick="exportCSV()">📊 CSV</button>
         <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨️ PDF</button>
-        <button class="btn btn-danger btn-sm" onclick="confirmResetCache()" title="Limpar Cache do Navegador">🧹 Resetar</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmResetCache()" title="Zerar Banco de Dados">🧹 Resetar Tudo</button>
       </div>
     </header>
 
@@ -210,6 +212,7 @@
         <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">ANO:</span>
         <select id="yearSelect" onchange="changeYear(this.value)" style="font-weight: 700;"></select>
         <button class="btn btn-primary btn-sm" onclick="openNewYearModal()">+ Novo Ano</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCurrentYear()" title="Excluir APENAS o ano que está na tela">🗑️ Excluir Ano</button>
       </div>
       <div class="month-tabs" id="monthTabs"></div>
     </div>
@@ -345,7 +348,6 @@
             </div>
 
             <div class="table-container">
-              <!-- TABELA LIVRE NOVAMENTE (SÓ LINHAS) -->
               <table>
                 <thead>
                   <tr>
@@ -377,6 +379,7 @@
 
       </div>
 
+      <!-- Visão Anual Consolidada -->
       <div id="annualView" style="display: none; flex-direction: column; gap: 1.25rem;">
         <section class="kpi-grid">
           <div class="kpi-card kpi-incomes"><div class="kpi-title"><span>Entradas no Ano</span><span>📈</span></div><div class="kpi-value" id="annIncomes" style="color: var(--accent-green);">R$ 0,00</div><div class="kpi-subtext">Soma dos 12 meses</div></div>
@@ -422,7 +425,7 @@
     </main>
   </div>
 
-  <!-- ================= MODAIS ================= -->
+  <!-- ================= MODAIS DE FORMULÁRIO ================= -->
   
   <div class="modal-overlay" id="expenseModal">
     <div class="modal-box">
@@ -555,7 +558,8 @@
         <div class="modal-body">
           <div><label style="font-size: 0.8rem; color: var(--text-muted);">Nome da Renda *</label><input type="text" id="incName" required style="width: 100%;"></div>
           <div><label style="font-size: 0.8rem; color: var(--text-muted);">Valor (R$) *</label><input type="number" step="0.01" min="0.01" id="incVal" required style="width: 100%;"></div>
-          <!-- NOVO: Data da Receita -->
+          
+          <!-- NOVO: Data da Receita e Botões de Cálculo Rápido -->
           <div>
               <label style="font-size: 0.8rem; color: var(--text-muted);">Data de Recebimento *</label>
               <input type="date" id="incDate" required style="width: 100%;">
@@ -678,6 +682,7 @@
 
   <div id="toast">Alterações salvas!</div>
 
+  <!-- ================= LÓGICA E JAVASCRIPT ================= -->
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBEdIIZlNHr9drPwu5RqY5e2muGOxMiKKg",
@@ -767,6 +772,26 @@
       }, '🧹');
     }
 
+    // ====== NOVO: EXCLUIR APENAS O ANO ATUAL ======
+    function deleteCurrentYear() {
+      const y = state.currentYear;
+      showCustomConfirm("Excluir Ano", `Tem certeza que deseja apagar DEFINITIVAMENTE todos os lançamentos de ${y}?`, () => {
+        delete state.years[y];
+        const remaining = Object.keys(state.years);
+        if (remaining.length === 0) {
+          state.years["2026"] = createEmptyYear();
+          state.currentYear = "2026";
+        } else {
+          state.currentYear = remaining.sort((a,b)=>b-a)[0]; 
+        }
+        syncToCloud(true);
+        renderYears();
+        renderTabs();
+        render();
+        showToast(`Ano ${y} apagado com sucesso!`);
+      }, '🗑️');
+    }
+
     function fmt(val) { return (Number(val) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
     function showToast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2600); }
     function setSyncStatus(isSyncing) { const dot = document.getElementById('syncDot'); if (dot) { if (isSyncing) dot.classList.add('syncing'); else dot.classList.remove('syncing'); } }
@@ -794,28 +819,23 @@
 
     function toggleTheme() { const html = document.documentElement; html.className = html.classList.contains('dark') ? 'light' : 'dark'; }
 
-    // ==========================================
-    // LÓGICA DO CALENDÁRIO (Calculo de Entradas)
-    // ==========================================
+    // ====== LÓGICA DO CALENDÁRIO (Calculo de Entradas) ======
     function getCycleDates(year, monthIdx) { 
-        // 1. Quinto dia útil (Sábado conta! Se 5º dia for sábado, volta pra sexta)
         let busDays = 0; let curDay = 1; let dSal;
         while (busDays < 5) {
             dSal = new Date(year, monthIdx, curDay);
-            if (dSal.getDay() !== 0) busDays++; // 0 = Domingo. Não conta.
+            if (dSal.getDay() !== 0) busDays++; 
             if (busDays < 5) curDay++;
         }
-        if (dSal.getDay() === 6) dSal.setDate(dSal.getDate() - 1); // Se caiu sabado, vai pra sexta.
+        if (dSal.getDay() === 6) dSal.setDate(dSal.getDate() - 1); 
 
-        // 2. Dia 20 (Adiantamento. Se sabado/domingo, vai pra sexta)
         let dAdi = new Date(year, monthIdx, 20);
         if (dAdi.getDay() === 6) dAdi.setDate(19);
         else if (dAdi.getDay() === 0) dAdi.setDate(18);
 
-        // 3. Última quinta-feira
         let lastDay = new Date(year, monthIdx + 1, 0);
         let dExt = new Date(lastDay);
-        while (dExt.getDay() !== 4) dExt.setDate(dExt.getDate() - 1); // Volta até achar quinta (4)
+        while (dExt.getDay() !== 4) dExt.setDate(dExt.getDate() - 1); 
 
         return {
             sal: dSal.getDate(),
@@ -838,7 +858,6 @@
         else if(type === 'Adiantamento') document.getElementById('incDate').value = dates.adiDateStr;
         else if(type === 'Flash') document.getElementById('incDate').value = dates.extDateStr;
     }
-    // ==========================================
 
     function getMonthData(y = state.currentYear, m = state.currentMonth) {
       if (!state.years[y]) state.years[y] = createEmptyYear();
@@ -869,6 +888,21 @@
       const wrap = document.getElementById('monthTabs'); if (!wrap) return; wrap.innerHTML = '';
       MONTHS.forEach(m => { const btn = document.createElement('button'); btn.className = `month-btn ${state.currentMonth === m ? 'active' : ''}`; btn.innerText = m; btn.onclick = () => { state.currentMonth = m; renderTabs(); render(); }; wrap.appendChild(btn); });
       const ann = document.createElement('button'); ann.className = `month-btn annual-btn ${state.currentMonth === 'ANNUAL' ? 'active' : ''}`; ann.innerHTML = '📊 Visão Anual'; ann.onclick = () => { state.currentMonth = 'ANNUAL'; renderTabs(); render(); }; wrap.appendChild(ann);
+    }
+
+    function launchFerias() {
+      const periodoStr = prompt("Valor do período de férias (o que você receberia normalmente nesses dias, SEM o adicional):", "0");
+      if (periodoStr === null) return; const periodo = parseFloat(periodoStr.replace(',', '.')); if (isNaN(periodo) || periodo <= 0) { showCustomAlert('Erro', 'Valor inválido.', '❌'); return; }
+      const terco = periodo / 3; const total = periodo + terco;
+      openIncomeModal(); document.getElementById('incName').value = 'Férias (Período + 1/3)'; document.getElementById('incVal').value = total.toFixed(2);
+      showCustomAlert('Férias', `Período: ${fmt(periodo)}\n1/3 Const.: ${fmt(terco)}\nTotal: ${fmt(total)}\n\nO modal de receitas foi preenchido, basta confirmar!`, '🏖️');
+    }
+
+    function launch13() {
+      const valorStr = prompt("Valor da parcela do 13º salário (já líquido):", "0");
+      if (valorStr === null) return; const valor = parseFloat(valorStr.replace(',', '.')); if (isNaN(valor) || valor <= 0) { showCustomAlert('Erro', 'Valor inválido.', '❌'); return; }
+      const parcela = prompt("É a 1ª ou a 2ª parcela? (deixe em branco se for parcela única)", "1");
+      openIncomeModal(); document.getElementById('incName').value = parcela ? `13º Salário (${parcela}ª parcela)` : '13º Salário'; document.getElementById('incVal').value = valor.toFixed(2);
     }
 
     function fillSelects() {
@@ -954,7 +988,6 @@
       const bEl = document.getElementById('kpiBalance'); const bCard = document.getElementById('kpiBalanceCard');
       bEl.innerText = fmt(availableBalance); bCard.className = `kpi-card ${availableBalance >= 0 ? 'kpi-balance-pos' : 'kpi-balance-neg'}`; bEl.style.color = availableBalance >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'; document.getElementById('kpiBalanceIcon').innerText = availableBalance >= 0 ? '✅' : '⚠️';
 
-      // ================= CÁLCULO DOS POTES DE CICLO (CORRIGIDO PARA DATA EXATA) =================
       const dates = getCycleDates(parseInt(state.currentYear), MONTHS.indexOf(state.currentMonth));
       let incC1 = 0, expC1 = 0, incC2 = 0, expC2 = 0, incC3 = 0, expC3 = 0;
 
@@ -963,7 +996,6 @@
           if (inc.date && inc.date.includes('-')) {
              day = parseInt(inc.date.split('-')[2], 10);
           } else {
-             // Fallback pra backups antigos sem data
              let n = (inc.name || '').toLowerCase();
              if (n.includes('adiantamento')) day = dates.adi;
              else if (n.includes('ppr') || n.includes('13º') || n.includes('férias') || n.includes('extra') || n.includes('flash')) day = dates.ext;
@@ -995,7 +1027,6 @@
       document.getElementById('lblDate3').innerText = String(dates.ext).padStart(2, '0');
       document.getElementById('planInc3').innerText = fmt(incC3); document.getElementById('planExp3').innerText = fmt(expC3);
       const bC3 = incC3 - expC3; document.getElementById('planBal3').innerText = fmt(bC3); document.getElementById('planBal3').style.color = bC3 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
-      // =============================================================
 
       const incList = document.getElementById('incomesList'); incList.innerHTML = '';
       data.incomes.forEach((inc, idx) => {
@@ -1035,9 +1066,6 @@
       renderTable();
     }
 
-    // ===============================================
-    // TABELA LIVRE (SEM DIVISÓRIAS, 100% ORDENÁVEL)
-    // ===============================================
     function renderTable() {
       const currentMIdx = MONTHS.indexOf(state.currentMonth);
       const currentYNum = parseInt(state.currentYear, 10);
@@ -1463,7 +1491,6 @@
       if (all) {
         MONTHS.forEach((m, mIdx) => { 
             const d = getMonthData(state.currentYear, m); 
-            // Ajusta a data para refletir o mês em que está sendo copiado (mantendo o dia)
             let dateToSave = dateVal;
             if(dateVal && dateVal.includes('-')) {
                 const parts = dateVal.split('-');
@@ -1651,7 +1678,7 @@
                      if (!newState.years[yE]) newState.years[yE] = createEmptyYear();
 
                      if (item.type === 'income') {
-                         newState.years[yE][mNameE].incomes.push({ name: item.description || "Renda", value: Number(item.amount) || 0 });
+                         newState.years[yE][mNameE].incomes.push({ name: item.description || "Renda", value: Number(item.amount) || 0, date: dateStr });
                      } else {
                          let payMethod = item.method || "DINHEIRO";
                          if (payMethod === 'money') payMethod = 'DINHEIRO';

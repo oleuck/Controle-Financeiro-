@@ -212,13 +212,14 @@
         <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">ANO:</span>
         <select id="yearSelect" onchange="changeYear(this.value)" style="font-weight: 700;"></select>
         <button class="btn btn-primary btn-sm" onclick="openNewYearModal()">+ Novo Ano</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteCurrentYear()" title="Excluir APENAS o ano que está na tela">🗑️ Excluir Ano</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCurrentYear()">🗑️ Excluir Ano</button>
       </div>
       <div class="month-tabs" id="monthTabs"></div>
     </div>
 
     <main class="main-container">
       
+      <!-- VISÃO MENSAL -->
       <div id="monthView" style="display: flex; flex-direction: column; gap: 1.25rem;">
         
         <section class="kpi-grid">
@@ -247,14 +248,9 @@
             <div class="kpi-value" id="kpiPending" style="color: var(--accent-yellow);">R$ 0,00</div>
             <div class="kpi-subtext" id="kpiPendingCount">0 pendentes</div>
           </div>
-          <div class="kpi-card kpi-saved">
-            <div class="kpi-title"><span>Invest./Guardado</span><span>💎</span></div>
-            <div class="kpi-value" id="kpiSaved" style="color: var(--accent-purple);">R$ 0,00</div>
-            <div class="kpi-subtext">Reservas e poupança</div>
-          </div>
         </section>
 
-        <!-- OS 3 POTES DE PLANEJAMENTO -->
+        <!-- POTES DE PLANEJAMENTO -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
             <div class="plan-box">
               <h4 style="color: var(--accent-blue); margin-bottom: 8px; display: flex; justify-content: space-between;">
@@ -320,6 +316,16 @@
                 </div>
               </div>
             </div>
+
+            <!-- NOVO: Limites de Cartões -->
+            <div class="content-card">
+              <div class="card-header">
+                <h2 style="font-size: 0.95rem;">💳 Limite dos Cartões</h2>
+              </div>
+              <div class="card-body" id="limitsList">
+                <div style="font-size:0.8rem; color:var(--text-muted); text-align:center;">Nenhum limite configurado nos cartões.</div>
+              </div>
+            </div>
           </div>
 
           <div class="content-card">
@@ -340,6 +346,7 @@
                   <option value="GUARDADO">Guardado</option>
                   <option value="NÃO APLICÁVEL">Não Aplicável</option>
                 </select>
+                <button class="btn btn-success btn-sm" onclick="openBulkPayModal()" title="Pagar Fatura Completa">💳 Pagar Fatura Lote</button>
               </div>
               <div style="display: flex; align-items: center; gap: 0.5rem;">
                 <span id="tableCount" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">0 itens</span>
@@ -376,10 +383,9 @@
           </div>
 
         </div>
-
       </div>
 
-      <!-- Visão Anual Consolidada -->
+      <!-- VISÃO ANUAL -->
       <div id="annualView" style="display: none; flex-direction: column; gap: 1.25rem;">
         <section class="kpi-grid">
           <div class="kpi-card kpi-incomes"><div class="kpi-title"><span>Entradas no Ano</span><span>📈</span></div><div class="kpi-value" id="annIncomes" style="color: var(--accent-green);">R$ 0,00</div><div class="kpi-subtext">Soma dos 12 meses</div></div>
@@ -419,6 +425,35 @@
               <tfoot id="annualTableFoot" style="font-weight: 700; background: var(--bg-tertiary);"></tfoot>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- NOVO: VISÃO INVESTIMENTOS -->
+      <div id="investView" style="display: none; flex-direction: column; gap: 1.25rem;">
+        <div class="kpi-card kpi-saved" style="text-align:center; padding: 3rem;">
+            <div class="kpi-title" style="justify-content:center;"><span>Patrimônio / Reservas Acumuladas</span></div>
+            <div class="kpi-value" id="invTotal" style="font-size: 3rem; color: var(--accent-blue);">R$ 0,00</div>
+            <div class="kpi-subtext">Soma de tudo categorizado como "Investimento" ou status "Guardado" na sua vida</div>
+        </div>
+        
+        <div class="content-card">
+            <div class="card-header">
+                <h2>Extrato de Aportes / Reservas</h2>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Descrição</th>
+                    <th>Onde/Origem</th>
+                    <th>Valor Aportado</th>
+                    <th style="text-align:center;">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="investTableBody"></tbody>
+              </table>
+            </div>
         </div>
       </div>
 
@@ -550,6 +585,21 @@
     </div>
   </div>
 
+  <!-- NOVO: Modal Pagar Fatura em Lote -->
+  <div class="modal-overlay" id="bulkPayModal">
+      <div class="modal-box" style="max-width: 400px;">
+          <div class="modal-header"><h3>💳 Pagar Fatura Inteira</h3><button class="btn btn-secondary btn-icon" onclick="closeModal('bulkPayModal')">✕</button></div>
+          <div class="modal-body">
+              <p style="font-size: 0.85rem; color: var(--text-muted);">Isso marcará como PAGO todas as contas pendentes atreladas a este cartão com vencimento no mês atual (<span id="bulkPayMonthLabel" style="font-weight:bold; color:var(--accent-blue);"></span>).</p>
+              <div>
+                  <label style="font-size: 0.8rem; color: var(--text-muted);">Selecione o Cartão</label>
+                  <select id="bulkPayCardSelect" style="width: 100%;"></select>
+              </div>
+          </div>
+          <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeModal('bulkPayModal')">Cancelar</button><button type="button" class="btn btn-success" onclick="executeBulkPay()">Confirmar Pagamento</button></div>
+      </div>
+  </div>
+
   <div class="modal-overlay" id="incomeModal">
     <div class="modal-box" style="max-width: 400px;">
       <div class="modal-header"><h3 id="incModalTitle">Receita</h3><button class="btn btn-secondary btn-icon" onclick="closeModal('incomeModal')">✕</button></div>
@@ -559,7 +609,6 @@
           <div><label style="font-size: 0.8rem; color: var(--text-muted);">Nome da Renda *</label><input type="text" id="incName" required style="width: 100%;"></div>
           <div><label style="font-size: 0.8rem; color: var(--text-muted);">Valor (R$) *</label><input type="number" step="0.01" min="0.01" id="incVal" required style="width: 100%;"></div>
           
-          <!-- NOVO: Data da Receita e Botões de Cálculo Rápido -->
           <div>
               <label style="font-size: 0.8rem; color: var(--text-muted);">Data de Recebimento *</label>
               <input type="date" id="incDate" required style="width: 100%;">
@@ -642,6 +691,11 @@
                   </select>
               </div>
           </div>
+          <!-- NOVO: Limite do Cartão -->
+          <div>
+              <label style="font-size: 0.8rem; color: var(--text-muted);">Limite Total do Cartão (R$) - Para acompanhamento</label>
+              <input type="number" id="cardLimit" step="0.01" style="width: 100%;" placeholder="Opcional. Ex: 5000">
+          </div>
           <div id="cardFixedFields" class="form-row-2">
               <div>
                   <label style="font-size: 0.8rem; color: var(--text-muted);">Dia Fechamento</label>
@@ -682,7 +736,6 @@
 
   <div id="toast">Alterações salvas!</div>
 
-  <!-- ================= LÓGICA E JAVASCRIPT ================= -->
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBEdIIZlNHr9drPwu5RqY5e2muGOxMiKKg",
@@ -720,7 +773,7 @@
         { name: "GASOLINA", color: "#f97316" }
       ],
       paymentMethods: ["DINHEIRO", "PIX"],
-      cards: [{ id: "c_banri30", name: "Banri30", type: "rolling", rollingDays: 30 }]
+      cards: [{ id: "c_banri30", name: "Banri30", type: "rolling", rollingDays: 30, limit: 0 }]
     };
 
     function sanitizeData(raw) {
@@ -731,7 +784,7 @@
       }
       if (Object.keys(cleanYears).length === 0 || !cleanYears["2026"]) { cleanYears["2026"] = createEmptyYear(); }
       let curY = raw.currentYear && cleanYears[raw.currentYear] ? String(raw.currentYear) : "2026";
-      let curM = raw.currentMonth && (MONTHS.includes(raw.currentMonth) || raw.currentMonth === 'ANNUAL') ? raw.currentMonth : "Janeiro";
+      let curM = raw.currentMonth && (MONTHS.includes(raw.currentMonth) || raw.currentMonth === 'ANNUAL' || raw.currentMonth === 'INVEST') ? raw.currentMonth : "Janeiro";
       return { years: cleanYears, currentYear: curY, currentMonth: curM, categories: Array.isArray(raw.categories) && raw.categories.length > 0 ? raw.categories : INITIAL_SCHEMA.categories, paymentMethods: Array.isArray(raw.paymentMethods) ? raw.paymentMethods : INITIAL_SCHEMA.paymentMethods, cards: Array.isArray(raw.cards) ? raw.cards : INITIAL_SCHEMA.cards };
     }
 
@@ -772,17 +825,16 @@
       }, '🧹');
     }
 
-    // ====== NOVO: EXCLUIR APENAS O ANO ATUAL ======
     function deleteCurrentYear() {
       const y = state.currentYear;
       showCustomConfirm("Excluir Ano", `Tem certeza que deseja apagar DEFINITIVAMENTE todos os lançamentos de ${y}?`, () => {
         delete state.years[y];
         const remaining = Object.keys(state.years);
         if (remaining.length === 0) {
-          state.years["2026"] = createEmptyYear();
-          state.currentYear = "2026";
+          state.years[(new Date()).getFullYear().toString()] = createEmptyYear();
+          state.currentYear = (new Date()).getFullYear().toString();
         } else {
-          state.currentYear = remaining.sort((a,b)=>b-a)[0]; 
+          state.currentYear = remaining.sort((a,b)=>parseInt(b)-parseInt(a))[0]; 
         }
         syncToCloud(true);
         renderYears();
@@ -819,7 +871,6 @@
 
     function toggleTheme() { const html = document.documentElement; html.className = html.classList.contains('dark') ? 'light' : 'dark'; }
 
-    // ====== LÓGICA DO CALENDÁRIO (Calculo de Entradas) ======
     function getCycleDates(year, monthIdx) { 
         let busDays = 0; let curDay = 1; let dSal;
         while (busDays < 5) {
@@ -851,9 +902,7 @@
         const currentYNum = parseInt(state.currentYear, 10);
         const currentMIdx = MONTHS.indexOf(state.currentMonth);
         const dates = getCycleDates(currentYNum, currentMIdx);
-
         document.getElementById('incName').value = type;
-        
         if(type === 'Salário') document.getElementById('incDate').value = dates.salDateStr;
         else if(type === 'Adiantamento') document.getElementById('incDate').value = dates.adiDateStr;
         else if(type === 'Flash') document.getElementById('incDate').value = dates.extDateStr;
@@ -887,7 +936,10 @@
     function renderTabs() {
       const wrap = document.getElementById('monthTabs'); if (!wrap) return; wrap.innerHTML = '';
       MONTHS.forEach(m => { const btn = document.createElement('button'); btn.className = `month-btn ${state.currentMonth === m ? 'active' : ''}`; btn.innerText = m; btn.onclick = () => { state.currentMonth = m; renderTabs(); render(); }; wrap.appendChild(btn); });
+      
       const ann = document.createElement('button'); ann.className = `month-btn annual-btn ${state.currentMonth === 'ANNUAL' ? 'active' : ''}`; ann.innerHTML = '📊 Visão Anual'; ann.onclick = () => { state.currentMonth = 'ANNUAL'; renderTabs(); render(); }; wrap.appendChild(ann);
+      
+      const inv = document.createElement('button'); inv.className = `month-btn annual-btn ${state.currentMonth === 'INVEST' ? 'active' : ''}`; inv.style.color = 'var(--accent-blue)'; inv.innerHTML = '💎 Investimentos'; inv.onclick = () => { state.currentMonth = 'INVEST'; renderTabs(); render(); }; wrap.appendChild(inv);
     }
 
     function launchFerias() {
@@ -956,11 +1008,59 @@
       document.getElementById('expVencDate').value = `${outY}-${outM}-${outD}`;
     }
 
+    function renderLimits() {
+        const wrap = document.getElementById('limitsList');
+        if(!wrap) return;
+        wrap.innerHTML = '';
+        let hasCards = false;
+        
+        state.cards.forEach(card => {
+            let limit = Number(card.limit) || 0;
+            if(limit === 0) return; 
+            hasCards = true;
+            
+            let used = 0;
+            for (let y in state.years) {
+                for (let m in state.years[y]) {
+                    state.years[y][m].expenses.forEach(e => {
+                        if (e.formaPgto === card.name && e.status !== 'PAGO') {
+                            used += Number(e.valor) || 0;
+                        }
+                    });
+                }
+            }
+            
+            let avail = limit - used;
+            let pct = (used / limit) * 100;
+            if(pct > 100) pct = 100;
+            let color = pct > 85 ? 'var(--accent-red)' : (pct > 70 ? 'var(--accent-yellow)' : 'var(--accent-green)');
+            
+            wrap.innerHTML += `
+                <div style="margin-bottom: 12px;">
+                    <div style="display:flex; justify-content:space-between; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;">
+                        <span>💳 ${card.name}</span>
+                        <span style="color: ${color};">Livre: ${fmt(avail)}</span>
+                    </div>
+                    <div style="width: 100%; height: 6px; background: var(--bg-tertiary); border-radius: 9999px; overflow: hidden;">
+                        <div style="height: 100%; width: ${pct}%; background: ${color}; transition: width 0.3s;"></div>
+                    </div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); text-align: right; margin-top: 2px;">Usado: ${fmt(used)} de ${fmt(limit)}</div>
+                </div>
+            `;
+        });
+        if(!hasCards) wrap.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center;">Configure o limite nos cartões para acompanhar aqui.</div>';
+    }
+
     function render() {
       const hy = document.getElementById('headerYear'); if (hy) hy.innerText = state.currentYear;
-      if (state.currentMonth === 'ANNUAL') { document.getElementById('monthView').style.display = 'none'; document.getElementById('annualView').style.display = 'flex'; renderAnnual(); return; }
+      
+      if (state.currentMonth === 'ANNUAL') { 
+          document.getElementById('monthView').style.display = 'none'; document.getElementById('investView').style.display = 'none'; document.getElementById('annualView').style.display = 'flex'; renderAnnual(); return; 
+      } else if (state.currentMonth === 'INVEST') {
+          document.getElementById('monthView').style.display = 'none'; document.getElementById('annualView').style.display = 'none'; document.getElementById('investView').style.display = 'flex'; renderInvestments(); return; 
+      }
 
-      document.getElementById('monthView').style.display = 'flex'; document.getElementById('annualView').style.display = 'none'; document.getElementById('monthTitle').innerText = state.currentMonth;
+      document.getElementById('monthView').style.display = 'flex'; document.getElementById('annualView').style.display = 'none'; document.getElementById('investView').style.display = 'none'; document.getElementById('monthTitle').innerText = state.currentMonth;
 
       let saldoAnterior = 0; const targetYNum = parseInt(state.currentYear, 10); const targetMIdx = MONTHS.indexOf(state.currentMonth);
       Object.keys(state.years).forEach(yStr => {
@@ -1063,6 +1163,7 @@
       if (!hasCats) { catList.innerHTML = `<div style="text-align: center; padding: 1rem; color: var(--text-muted); font-size: 0.85rem;">Nenhum gasto neste mês.</div>`; }
       document.getElementById('catTotalFooter').innerText = fmt(sumCategorized);
 
+      renderLimits();
       renderTable();
     }
 
@@ -1181,6 +1282,43 @@
             document.getElementById('cardIdToEdit').value = '';
             document.getElementById('btnSalvarCartao').innerText = "+ Salvar Cartão";
             document.getElementById('cardForm').reset();
+        }
+    }
+
+    // ====== NOVO: PAGAR FATURA EM LOTE ======
+    function openBulkPayModal() {
+        const sel = document.getElementById('bulkPayCardSelect');
+        sel.innerHTML = '';
+        if(state.cards.length === 0) {
+            showCustomAlert("Sem Cartões", "Você não tem nenhum cartão configurado.", "⚠️");
+            return;
+        }
+        state.cards.forEach(c => { sel.innerHTML += `<option value="${c.name}">💳 ${c.name}</option>`; });
+        document.getElementById('bulkPayMonthLabel').innerText = state.currentMonth + '/' + state.currentYear;
+        openModal('bulkPayModal');
+    }
+
+    function executeBulkPay() {
+        const cardName = document.getElementById('bulkPayCardSelect').value;
+        const currentMIdx = MONTHS.indexOf(state.currentMonth);
+        const currentSuffix = `${String(currentMIdx + 1).padStart(2, '0')}/${state.currentYear}`;
+        
+        let count = 0;
+        for (let y in state.years) {
+            for (let m in state.years[y]) {
+                state.years[y][m].expenses.forEach(e => {
+                    if (e.formaPgto === cardName && e.vencimento && e.vencimento.endsWith(currentSuffix) && e.status !== 'PAGO') {
+                        e.status = 'PAGO';
+                        count++;
+                    }
+                });
+            }
+        }
+        closeModal('bulkPayModal');
+        if (count > 0) {
+            render(); syncToCloud(); showToast(`${count} contas marcadas como PAGAS!`);
+        } else {
+            showToast(`Nenhuma conta pendente para este cartão neste mês.`);
         }
     }
 
@@ -1570,6 +1708,7 @@
         document.getElementById('cardIdToEdit').value = c.id;
         document.getElementById('cardName').value = c.name;
         document.getElementById('cardType').value = c.type;
+        document.getElementById('cardLimit').value = c.limit || '';
         toggleCardTypeUI();
         if (c.type === 'rolling') {
             document.getElementById('rollingDays').value = c.rollingDays || '';
@@ -1587,13 +1726,24 @@
       if (editId) {
           const card = state.cards.find(c => c.id === editId);
           if (card) {
+              const oldName = card.name;
               card.name = name;
               card.type = type;
+              card.limit = parseFloat(document.getElementById('cardLimit').value) || 0;
               if (type === 'rolling') { card.rollingDays = document.getElementById('rollingDays').value || 30; } 
               else { card.closingDay = document.getElementById('closingDay').value || 1; card.dueDay = document.getElementById('dueDay').value || 10; }
+              
+              // CASCATA (Atualiza os registros passados e futuros com o novo nome)
+              for (let y in state.years) {
+                  for (let m in state.years[y]) {
+                      state.years[y][m].expenses.forEach(exp => {
+                          if (exp.formaPgto === oldName) exp.formaPgto = name;
+                      });
+                  }
+              }
           }
       } else {
-          const newCard = { id: 'card_' + Date.now(), name: name, type: type };
+          const newCard = { id: 'card_' + Date.now(), name: name, type: type, limit: parseFloat(document.getElementById('cardLimit').value) || 0 };
           if (type === 'rolling') { newCard.rollingDays = document.getElementById('rollingDays').value || 30; } 
           else { newCard.closingDay = document.getElementById('closingDay').value || 1; newCard.dueDay = document.getElementById('dueDay').value || 10; }
           state.cards.push(newCard); 
@@ -1602,7 +1752,7 @@
       document.getElementById('cardIdToEdit').value = '';
       document.getElementById('btnSalvarCartao').innerText = "+ Salvar Cartão";
       document.getElementById('cardForm').reset(); 
-      toggleCardTypeUI(); renderCardList(); fillSelects(); syncToCloud(); showToast('Cartão salvo com sucesso!');
+      toggleCardTypeUI(); renderCardList(); fillSelects(); syncToCloud(); render(); showToast('Cartão salvo com sucesso!');
     }
 
     function delCard(idx) { showCustomConfirm("Excluir Cartão", "Deseja excluir as configurações deste cartão?", () => { state.cards.splice(idx, 1); renderCardList(); fillSelects(); syncToCloud(); showToast('Cartão excluído!'); }, '💳'); }
@@ -1621,6 +1771,49 @@
                 </div>
             </div>`;
       });
+    }
+
+    // ====== NOVO: PAINEL DE INVESTIMENTOS ======
+    function renderInvestments() {
+        let total = 0;
+        let invList = [];
+        for (let y in state.years) {
+            for (let m in state.years[y]) {
+                state.years[y][m].expenses.forEach(e => {
+                    if (e.status === 'GUARDADO' || (e.categoria || '').toUpperCase() === 'INVESTIMENTO') {
+                        total += Number(e.valor);
+                        invList.push(e);
+                    }
+                });
+            }
+        }
+        
+        document.getElementById('invTotal').innerText = fmt(total);
+        
+        invList.sort((a,b) => {
+            let da = a.dataDespesa || a.vencimento; let db = b.dataDespesa || b.vencimento;
+            if(!da) return 1; if(!db) return -1;
+            let pa = da.split('/'); let pb = db.split('/');
+            return new Date(pb[2], pb[1]-1, pb[0]) - new Date(pa[2], pa[1]-1, pa[0]);
+        });
+        
+        const tbody = document.getElementById('investTableBody');
+        tbody.innerHTML = '';
+        if(invList.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--text-muted);">Nenhum investimento registrado. Crie uma despesa com categoria "INVESTIMENTO" ou status "GUARDADO".</td></tr>`;
+        } else {
+            invList.forEach(e => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${e.dataDespesa || e.vencimento}</td>
+                        <td><strong>${e.descricao}</strong></td>
+                        <td>${e.formaPgto}</td>
+                        <td style="color: var(--accent-blue); font-weight: bold;">${fmt(e.valor)}</td>
+                        <td style="text-align:center;"><span class="status-badge status-guardado">GUARDADO</span></td>
+                    </tr>
+                `;
+            });
+        }
     }
 
     function renderAnnual() {

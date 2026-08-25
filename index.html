@@ -90,6 +90,11 @@
     .kpi-value { font-size: 1.35rem; font-weight: 700; margin: 0.25rem 0; }
     .kpi-subtext { font-size: 0.75rem; color: var(--text-muted); }
 
+    /* NOVO: Potes de Planejamento (Ciclos) */
+    .plan-box { background: var(--bg-secondary); padding: 1.15rem; border-radius: 0.75rem; box-shadow: var(--card-shadow); border: 1px solid var(--border-color); border-top: 4px solid var(--accent-blue); }
+    .plan-box:nth-child(2) { border-top-color: var(--accent-yellow); }
+    .plan-box:nth-child(3) { border-top-color: var(--accent-purple); }
+
     .dashboard-grid { display: grid; grid-template-columns: 330px 1fr; gap: 1.25rem; align-items: start; }
     @media (max-width: 1080px) { .dashboard-grid { grid-template-columns: 1fr; } }
     .content-card { background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.75rem; box-shadow: var(--card-shadow); overflow: hidden; }
@@ -111,6 +116,9 @@
     th.sortable:hover { color: var(--text-main); }
     td { padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
     tbody tr:hover { background-color: rgba(255, 255, 255, 0.02); }
+
+    /* Estilo do Agrupador da Tabela */
+    .group-header td { background-color: var(--bg-tertiary); color: var(--text-main); font-weight: bold; text-align: center; padding: 10px; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; }
 
     .status-badge { padding: 0.2rem 0.55rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 700; cursor: pointer; display: inline-block; user-select: none; transition: transform 0.1s; }
     .status-badge:hover { transform: scale(1.05); }
@@ -252,6 +260,42 @@
           </div>
         </section>
 
+        <!-- NOVO: OS 3 POTES DE PLANEJAMENTO -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+            <div class="plan-box">
+              <h4 style="color: var(--accent-blue); margin-bottom: 8px; display: flex; justify-content: space-between;">
+                <span>🗓️ Ciclo 1 (Salário)</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Dia 01 ao <span id="lblDate1"></span></span>
+              </h4>
+              <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">
+                <span>Entrada: <strong id="planInc1" style="color: var(--accent-green);">R$ 0,00</strong></span>
+                <span>Saída: <strong id="planExp1" style="color: var(--accent-red);">R$ 0,00</strong></span>
+              </div>
+              <div style="font-size: 1.1rem; font-weight: 700;">Restante: <span id="planBal1">R$ 0,00</span></div>
+            </div>
+
+            <div class="plan-box">
+              <h4 style="color: var(--accent-yellow); margin-bottom: 8px; display: flex; justify-content: space-between;">
+                <span>🗓️ Ciclo 2 (Adiantamento)</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Dia <span id="lblDate2A"></span> ao <span id="lblDate2B"></span></span>
+              </h4>
+              <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">
+                <span>Entrada: <strong id="planInc2" style="color: var(--accent-green);">R$ 0,00</strong></span>
+                <span>Saída: <strong id="planExp2" style="color: var(--accent-red);">R$ 0,00</strong></span>
+              </div>
+              <div style="font-size: 1.1rem; font-weight: 700;">Restante: <span id="planBal2">R$ 0,00</span></div>
+            </div>
+
+            <div class="plan-box">
+              <h4 style="color: var(--accent-purple); margin-bottom: 8px; display: flex; justify-content: space-between;">
+                <span>🗓️ Ciclo 3 (Extra/PPR)</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Dia <span id="lblDate3"></span> em diante</span>
+              </h4>
+              <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">
+                <span>Entrada: <strong id="planInc3" style="color: var(--accent-green);">R$ 0,00</strong></span>
+                <span>Saída: <strong id="planExp3" style="color: var(--accent-red);">R$ 0,00</strong></span>
+              </div>
+              <div style="font-size: 1.1rem; font-weight: 700;">Restante: <span id="planBal3">R$ 0,00</span></div>
+            </div>
+        </div>
+
         <div class="dashboard-grid">
           
           <div style="display: flex; flex-direction: column; gap: 1.25rem;">
@@ -317,7 +361,6 @@
                     <th class="sortable" onclick="sortTable('descricao')">Descrição ⇅</th>
                     <th class="sortable" onclick="sortTable('categoria')">Categoria ⇅</th>
                     <th class="sortable" onclick="sortTable('valor')">Valor (R$) ⇅</th>
-                    <!-- INVERSÃO REALIZADA AQUI: COMPRA ANTES DE VENCIMENTO -->
                     <th class="sortable" onclick="sortTable('dataDespesa')">Data Compra ⇅</th>
                     <th class="sortable" onclick="sortTable('vencimento')">Vencimento ⇅</th>
                     <th class="sortable" onclick="sortTable('status')">Status ⇅</th>
@@ -454,7 +497,22 @@
             </div>
           </div>
 
-          <div id="repeatWrap" style="background: var(--bg-tertiary); padding: 0.75rem; border-radius: 0.5rem; font-size: 0.85rem; border: 1px dashed var(--border-color);">
+          <div id="editModeWrap" style="display: none; background: #fff3cd; padding: 0.75rem; border-radius: 0.5rem; font-size: 0.85rem; border: 1px solid #ffeeba; margin-top: 0.75rem;">
+            <p style="margin: 0 0 5px 0; color: #856404; font-weight: 700;">✏️ Opções de Edição em Lote</p>
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+              <label style="cursor: pointer; color: #856404; display: flex; align-items: center; gap: 5px;">
+                <input type="radio" name="bulkEdit" value="single" checked> Alterar apenas este mês
+              </label>
+              <label style="cursor: pointer; color: #856404; display: flex; align-items: center; gap: 5px;">
+                <input type="radio" name="bulkEdit" value="future"> Alterar este e os próximos meses (Futuro)
+              </label>
+              <label style="cursor: pointer; color: #856404; display: flex; align-items: center; gap: 5px;">
+                <input type="radio" name="bulkEdit" value="all"> Alterar todos os meses (Passado e Futuro)
+              </label>
+            </div>
+          </div>
+
+          <div id="repeatWrap" style="background: var(--bg-tertiary); padding: 0.75rem; border-radius: 0.5rem; font-size: 0.85rem; border: 1px dashed var(--border-color); margin-top: 0.75rem;">
             <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600;">
               <input type="checkbox" id="expRepeat" onchange="toggleRepeatFields(this.checked)">
               🔁 Replicar para os próximos meses
@@ -642,7 +700,7 @@
 
     function createEmptyYear() {
       const y = {};
-      MONTHS.forEach(m => { y[m] = { incomes: [{ name: "Salário 1", value: 0 }, { name: "Salário 2", value: 0 }], expenses: [] }; });
+      MONTHS.forEach(m => { y[m] = { incomes: [{ name: "Salário", value: 0 }, { name: "Adiantamento", value: 0 }], expenses: [] }; });
       return y;
     }
 
@@ -740,9 +798,37 @@
 
     function toggleTheme() { const html = document.documentElement; html.className = html.classList.contains('dark') ? 'light' : 'dark'; }
 
+    // ====== LÓGICA DOS 3 CICLOS DO CALENDÁRIO ======
+    function getCycleDates(year, monthIdx) { 
+        // 1. Quinto dia útil (Conta seg a sex. Se cair sábado, joga pra sexta)
+        let busDays = 0; let curDay = 1; let dSal;
+        while (busDays < 5) {
+            dSal = new Date(year, monthIdx, curDay);
+            if (dSal.getDay() !== 0 && dSal.getDay() !== 6) busDays++; // Conta só dias de semana
+            if (busDays < 5) curDay++;
+        }
+        if (dSal.getDay() === 6) dSal.setDate(dSal.getDate() - 1);
+
+        // 2. Dia 20 (Adiantamento. Se sabado/domingo, vai pra sexta)
+        let dAdi = new Date(year, monthIdx, 20);
+        if (dAdi.getDay() === 6) dAdi.setDate(19);
+        else if (dAdi.getDay() === 0) dAdi.setDate(18);
+
+        // 3. Última quinta-feira
+        let lastDay = new Date(year, monthIdx + 1, 0);
+        let dExt = new Date(lastDay);
+        while (dExt.getDay() !== 4) dExt.setDate(dExt.getDate() - 1);
+
+        return {
+            sal: dSal.getDate(),
+            adi: dAdi.getDate(),
+            ext: dExt.getDate()
+        };
+    }
+
     function getMonthData(y = state.currentYear, m = state.currentMonth) {
       if (!state.years[y]) state.years[y] = createEmptyYear();
-      if (!state.years[y][m]) state.years[y][m] = { incomes: [{ name: "Salário 1", value: 0 }, { name: "Salário 2", value: 0 }], expenses: [] };
+      if (!state.years[y][m]) state.years[y][m] = { incomes: [{ name: "Salário", value: 0 }, { name: "Adiantamento", value: 0 }], expenses: [] };
       return state.years[y][m];
     }
 
@@ -869,6 +955,42 @@
       const bEl = document.getElementById('kpiBalance'); const bCard = document.getElementById('kpiBalanceCard');
       bEl.innerText = fmt(availableBalance); bCard.className = `kpi-card ${availableBalance >= 0 ? 'kpi-balance-pos' : 'kpi-balance-neg'}`; bEl.style.color = availableBalance >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'; document.getElementById('kpiBalanceIcon').innerText = availableBalance >= 0 ? '✅' : '⚠️';
 
+      // ================= CÁLCULO DOS POTES DE CICLO =================
+      const dates = getCycleDates(parseInt(state.currentYear), MONTHS.indexOf(state.currentMonth));
+      let incC1 = 0, expC1 = 0, incC2 = 0, expC2 = 0, incC3 = 0, expC3 = 0;
+
+      data.incomes.forEach(inc => {
+          let n = (inc.name || '').toLowerCase();
+          if (n.includes('adiantamento')) incC2 += Number(inc.value);
+          else if (n.includes('ppr') || n.includes('13º') || n.includes('férias') || n.includes('ferias') || n.includes('extra')) incC3 += Number(inc.value);
+          else incC1 += Number(inc.value);
+      });
+
+      data.expenses.forEach(exp => {
+         if (exp.vencimento && exp.vencimento.includes('/')) {
+             let d = parseInt(exp.vencimento.split('/')[0], 10);
+             if (d < dates.adi) expC1 += Number(exp.valor);
+             else if (d < dates.ext) expC2 += Number(exp.valor);
+             else expC3 += Number(exp.valor);
+         }
+      });
+
+      // Pote 1
+      document.getElementById('lblDate1').innerText = String(dates.adi - 1).padStart(2, '0');
+      document.getElementById('planInc1').innerText = fmt(incC1); document.getElementById('planExp1').innerText = fmt(expC1);
+      const bC1 = incC1 - expC1; document.getElementById('planBal1').innerText = fmt(bC1); document.getElementById('planBal1').style.color = bC1 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+
+      // Pote 2
+      document.getElementById('lblDate2A').innerText = String(dates.adi).padStart(2, '0'); document.getElementById('lblDate2B').innerText = String(dates.ext - 1).padStart(2, '0');
+      document.getElementById('planInc2').innerText = fmt(incC2); document.getElementById('planExp2').innerText = fmt(expC2);
+      const bC2 = incC2 - expC2; document.getElementById('planBal2').innerText = fmt(bC2); document.getElementById('planBal2').style.color = bC2 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+
+      // Pote 3
+      document.getElementById('lblDate3').innerText = String(dates.ext).padStart(2, '0');
+      document.getElementById('planInc3').innerText = fmt(incC3); document.getElementById('planExp3').innerText = fmt(expC3);
+      const bC3 = incC3 - expC3; document.getElementById('planBal3').innerText = fmt(bC3); document.getElementById('planBal3').style.color = bC3 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+      // =============================================================
+
       const incList = document.getElementById('incomesList'); incList.innerHTML = '';
       data.incomes.forEach((inc, idx) => {
         incList.innerHTML += `
@@ -897,9 +1019,7 @@
               </div>`;
         }
       });
-      if (!hasCats) {
-          catList.innerHTML = `<div style="text-align: center; padding: 1rem; color: var(--text-muted); font-size: 0.85rem;">Nenhum gasto neste mês.</div>`;
-      }
+      if (!hasCats) { catList.innerHTML = `<div style="text-align: center; padding: 1rem; color: var(--text-muted); font-size: 0.85rem;">Nenhum gasto neste mês.</div>`; }
       document.getElementById('catTotalFooter').innerText = fmt(sumCategorized);
 
       renderTable();
@@ -911,13 +1031,14 @@
       const currentMonthStr = String(currentMIdx + 1).padStart(2, '0');
       const currentSuffix = `${currentMonthStr}/${currentYNum}`;
 
+      const dates = getCycleDates(currentYNum, currentMIdx);
+
       const data = getMonthData();
       let allItems = [...data.expenses];
 
       for(let y in state.years) {
           for(let m in state.years[y]) {
               if (y == currentYNum && m == state.currentMonth) continue;
-
               state.years[y][m].expenses.forEach(fe => {
                   if(fe.dataDespesa && fe.dataDespesa.endsWith(currentSuffix)) {
                       if (!fe.vencimento.endsWith(currentSuffix)) {
@@ -953,47 +1074,66 @@
       if (list.length === 0) {
         tbody.innerHTML = `<tr><td colspan="10" style="text-align: center; color: var(--text-muted); padding: 2rem;">Nenhuma despesa encontrada neste mês.</td></tr>`;
       } else {
+        
+        let c1 = [], c2 = [], c3 = [];
         list.forEach(e => {
-          if (!e.isFutureView) { filteredSum += (Number(e.valor) || 0); }
-
-          const catConfig = state.categories.find(c => c.name.toUpperCase() === (e.categoria || '').toUpperCase()) || { color: '#64748b' };
-          let stClass = 'status-a-pagar';
-          if (e.status === 'PAGO') stClass = 'status-pago';
-          else if (e.status === 'GUARDADO') stClass = 'status-guardado';
-          else if (e.status === 'NÃO APLICÁVEL') stClass = 'status-nao-aplicavel';
-
-          const isFuture = e.isFutureView;
-          const isPastPurchase = !isFuture && e.dataDespesa && !e.dataDespesa.endsWith(currentSuffix);
-          const rowClass = isFuture ? 'future-row' : '';
-
-          let cardInfo = '';
-          if (isFuture) {
-             cardInfo = `<span style="font-size: 0.7rem; color: var(--accent-blue); display:block; margin-top: 3px; font-weight: 700;">⏭️ Fatura de ${e.originalMonthName}/${e.originalYear}</span>`;
-          } else if (isPastPurchase) {
-             const [dD, mD, yD] = e.dataDespesa.split('/');
-             const mNameStr = MONTHS[parseInt(mD, 10) - 1];
-             cardInfo = `<span style="font-size: 0.7rem; color: var(--text-muted); display:block; margin-top: 3px; font-weight: 600;">🛒 Comprado em ${mNameStr}/${yD}</span>`;
-          }
-
-          tbody.innerHTML += `
-            <tr class="${rowClass}">
-              <td><strong>${e.formaPgto || '-'}</strong></td>
-              <td><strong>${e.descricao}</strong> ${cardInfo}</td>
-              <td><span class="cat-tag" style="background:${catConfig.color}20; color:${catConfig.color}; border:1px solid ${catConfig.color}40;"><span class="cat-dot" style="background:${catConfig.color};"></span>${e.categoria}</span></td>
-              <td><strong style="color: var(--accent-red);">${fmt(e.valor)}</strong></td>
-              <td><span style="color: var(--text-muted); font-size:0.8rem;">${e.dataDespesa || '-'}</span></td>
-              <td><span style="color: var(--text-muted); font-size:0.8rem; font-weight:600;">${e.vencimento || '-'}</span></td>
-              <td><span class="status-badge ${stClass}" onclick="toggleStatus('${e.id}')" title="Clique para alternar">${e.status}</span></td>
-              <td>${e.parcela ? `<span class="parcela-badge">${e.parcela}</span>` : '-'}</td>
-              <td><small style="color: var(--text-muted);">${e.obs || ''}</small></td>
-              <td style="text-align: right;">
-                <button class="btn btn-secondary btn-icon btn-sm" onclick="openExpenseModal('${e.id}')" title="Editar">✏️</button>
-                <button class="btn btn-secondary btn-icon btn-sm" onclick="duplicateExpense('${e.id}')" title="Duplicar">📑</button>
-                <button class="btn btn-danger btn-icon btn-sm" onclick="delExpense('${e.id}')" title="Excluir">🗑️</button>
-              </td>
-            </tr>
-          `;
+            let eDay = 31;
+            if (e.vencimento && e.vencimento.includes('/')) eDay = parseInt(e.vencimento.split('/')[0], 10);
+            if (eDay < dates.adi) c1.push(e);
+            else if (eDay < dates.ext) c2.push(e);
+            else c3.push(e);
         });
+
+        const renderGroup = (arr, title) => {
+            if(arr.length === 0) return;
+            tbody.innerHTML += `<tr class="group-header"><td colspan="10">${title}</td></tr>`;
+            
+            arr.forEach(e => {
+                if (!e.isFutureView) { filteredSum += (Number(e.valor) || 0); }
+
+                const catConfig = state.categories.find(c => c.name.toUpperCase() === (e.categoria || '').toUpperCase()) || { color: '#64748b' };
+                let stClass = 'status-a-pagar';
+                if (e.status === 'PAGO') stClass = 'status-pago';
+                else if (e.status === 'GUARDADO') stClass = 'status-guardado';
+                else if (e.status === 'NÃO APLICÁVEL') stClass = 'status-nao-aplicavel';
+
+                const isFuture = e.isFutureView;
+                const isPastPurchase = !isFuture && e.dataDespesa && !e.dataDespesa.endsWith(currentSuffix);
+                const rowClass = isFuture ? 'future-row' : '';
+
+                let cardInfo = '';
+                if (isFuture) {
+                   cardInfo = `<span style="font-size: 0.7rem; color: var(--accent-blue); display:block; margin-top: 3px; font-weight: 700;">⏭️ Fatura de ${e.originalMonthName}/${e.originalYear}</span>`;
+                } else if (isPastPurchase) {
+                   const [dD, mD, yD] = e.dataDespesa.split('/');
+                   const mNameStr = MONTHS[parseInt(mD, 10) - 1];
+                   cardInfo = `<span style="font-size: 0.7rem; color: var(--text-muted); display:block; margin-top: 3px; font-weight: 600;">🛒 Comprado em ${mNameStr}/${yD}</span>`;
+                }
+
+                tbody.innerHTML += `
+                  <tr class="${rowClass}">
+                    <td><strong>${e.formaPgto || '-'}</strong></td>
+                    <td><strong>${e.descricao}</strong> ${cardInfo}</td>
+                    <td><span class="cat-tag" style="background:${catConfig.color}20; color:${catConfig.color}; border:1px solid ${catConfig.color}40;"><span class="cat-dot" style="background:${catConfig.color};"></span>${e.categoria}</span></td>
+                    <td><strong style="color: var(--accent-red);">${fmt(e.valor)}</strong></td>
+                    <td><span style="color: var(--text-muted); font-size:0.8rem;">${e.dataDespesa || '-'}</span></td>
+                    <td><span style="color: var(--text-muted); font-size:0.8rem; font-weight:600;">${e.vencimento || '-'}</span></td>
+                    <td><span class="status-badge ${stClass}" onclick="toggleStatus('${e.id}')" title="Clique para alternar">${e.status}</span></td>
+                    <td>${e.parcela ? `<span class="parcela-badge">${e.parcela}</span>` : '-'}</td>
+                    <td><small style="color: var(--text-muted);">${e.obs || ''}</small></td>
+                    <td style="text-align: right;">
+                      <button class="btn btn-secondary btn-icon btn-sm" onclick="openExpenseModal('${e.id}')" title="Editar">✏️</button>
+                      <button class="btn btn-secondary btn-icon btn-sm" onclick="duplicateExpense('${e.id}')" title="Duplicar">📑</button>
+                      <button class="btn btn-danger btn-icon btn-sm" onclick="delExpense('${e.id}')" title="Excluir">🗑️</button>
+                    </td>
+                  </tr>
+                `;
+            });
+        };
+
+        renderGroup(c1, `📍 CICLO 1 (Contas do dia 01 ao dia ${String(dates.adi - 1).padStart(2, '0')} — Pagas com Salário)`);
+        renderGroup(c2, `📍 CICLO 2 (Contas do dia ${String(dates.adi).padStart(2, '0')} ao dia ${String(dates.ext - 1).padStart(2, '0')} — Pagas com Adiantamento)`);
+        renderGroup(c3, `📍 CICLO 3 (Contas do dia ${String(dates.ext).padStart(2, '0')} até o fim do mês — Pagas com Extras/PPR)`);
       }
 
       document.getElementById('tableCount').innerText = `${list.length} itens`;
@@ -1039,10 +1179,10 @@
       document.getElementById('repFields').style.display = checked ? 'block' : 'none';
       document.getElementById('standaloneParcWrap').style.display = checked ? 'none' : 'block';
       if (checked) { 
-          document.getElementById('obsWrap').style.gridColumn = 'span 2';
+          document.getElementById('rowParcObs').style.gridTemplateColumns = '1fr';
           toggleRepType(); 
       } else { 
-          document.getElementById('obsWrap').style.gridColumn = 'span 1';
+          document.getElementById('rowParcObs').style.gridTemplateColumns = '1fr 1fr';
           document.getElementById('expParc').value = ''; 
       }
     }
@@ -1051,9 +1191,13 @@
       fillSelects(); document.getElementById('expId').value = id || ''; document.getElementById('expRepeat').checked = false; 
       document.getElementById('repFields').style.display = 'none';
       document.getElementById('standaloneParcWrap').style.display = 'block';
-      document.getElementById('obsWrap').style.gridColumn = 'span 1';
-
+      document.getElementById('rowParcObs').style.gridTemplateColumns = '1fr 1fr';
+      
       if (id) {
+        document.getElementById('editModeWrap').style.display = 'block';
+        document.getElementById('repeatWrap').style.display = 'none';
+        document.querySelector('input[name="bulkEdit"][value="single"]').checked = true;
+
         const result = findExpenseGlobal(id);
         const exp = result ? result.exp : null;
         if (exp) {
@@ -1072,9 +1216,12 @@
             if (p.length === 3) { const d = String(p[0]).padStart(2, '0'); const m = String(p[1]).padStart(2, '0'); const y = p[2]; document.getElementById('expDataDespesa').value = `${y}-${m}-${d}`; } else { document.getElementById('expDataDespesa').value = ''; }
           } else { document.getElementById('expDataDespesa').value = exp.dataDespesa || ''; }
 
-          document.getElementById('expParc').value = exp.parcela || ''; document.getElementById('expObs').value = exp.obs || ''; document.getElementById('repeatWrap').style.display = 'none';
+          document.getElementById('expParc').value = exp.parcela || ''; document.getElementById('expObs').value = exp.obs || '';
         }
       } else {
+        document.getElementById('editModeWrap').style.display = 'none';
+        document.getElementById('repeatWrap').style.display = 'block';
+        
         document.getElementById('expModalTitle').innerText = 'Nova Despesa';
         document.getElementById('expDesc').value = ''; document.getElementById('expVal').value = '';
         document.getElementById('expCat').value = ''; document.getElementById('expPay').value = state.paymentMethods[0] || ''; document.getElementById('expStat').value = 'À PAGAR';
@@ -1082,7 +1229,7 @@
         let curMIdx = MONTHS.indexOf(state.currentMonth); if (curMIdx === -1) curMIdx = 0;
         const mStr = String(curMIdx + 1).padStart(2, '0'); const yStr = state.currentYear || "2026";
         document.getElementById('expVencDate').value = `${yStr}-${mStr}-10`; document.getElementById('expDataDespesa').value = '';
-        document.getElementById('expParc').value = ''; document.getElementById('expObs').value = ''; document.getElementById('repeatWrap').style.display = 'block';
+        document.getElementById('expParc').value = ''; document.getElementById('expObs').value = ''; 
       }
       openModal('expenseModal');
     }
@@ -1135,7 +1282,58 @@
           const result = findExpenseGlobal(id);
           const item = result ? result.exp : null;
           if (item) {
+            const originalDesc = item.descricao;
+            const originalYNum = parseInt(result.year, 10);
+            const originalMIdx = MONTHS.indexOf(result.month);
+
+            const bulkEdit = document.querySelector('input[name="bulkEdit"]:checked') ? document.querySelector('input[name="bulkEdit"]:checked').value : 'single';
+
             Object.assign(item, { descricao: desc, valor: val, categoria: cat, formaPgto: pay, status: stat, vencimento: displayDate, dataDespesa: displayBuyDate, parcela: parc, obs });
+
+            if (bulkEdit !== 'single') {
+                Object.keys(state.years).forEach(yStr => {
+                    const yNum = parseInt(yStr, 10);
+                    MONTHS.forEach((mName, mIdx) => {
+                        if (bulkEdit === 'future') {
+                            if (yNum < originalYNum) return;
+                            if (yNum === originalYNum && mIdx < originalMIdx) return;
+                        }
+
+                        if (state.years[yStr][mName] && state.years[yStr][mName].expenses) {
+                            state.years[yStr][mName].expenses.forEach(e => {
+                                const eDescBase = e.descricao.replace(/\s*\(\d+\/\d+\)$/, '');
+                                const origDescBase = originalDesc.replace(/\s*\(\d+\/\d+\)$/, '');
+                                
+                                if (eDescBase === origDescBase && String(e.id) !== String(id)) {
+                                    e.descricao = desc; 
+                                    e.valor = val;
+                                    e.categoria = cat;
+                                    e.formaPgto = pay;
+                                    e.obs = obs;
+                                    
+                                    const card = (state.cards || []).find(c => c.name === pay);
+                                    if(card && e.dataDespesa) {
+                                        const parts = e.dataDespesa.split('/');
+                                        if(parts.length === 3) {
+                                            let dD = parseInt(parts[0], 10); let mD = parseInt(parts[1], 10) - 1; let yD = parseInt(parts[2], 10);
+                                            let dateObj = new Date(yD, mD, dD);
+                                            if (card.type === 'rolling') {
+                                                dateObj.setDate(dateObj.getDate() + parseInt(card.rollingDays || 30));
+                                            } else {
+                                                let closingDay = parseInt(card.closingDay || 1); let dueDay = parseInt(card.dueDay || 10);
+                                                if (dD >= closingDay) { mD++; if (mD > 11) { mD = 0; yD++; } }
+                                                dateObj = new Date(yD, mD, dueDay);
+                                            }
+                                            const outY = dateObj.getFullYear(); const outM = String(dateObj.getMonth() + 1).padStart(2, '0'); const outD = String(dateObj.getDate()).padStart(2, '0');
+                                            e.vencimento = `${outD}/${outM}/${outY}`;
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    });
+                });
+            }
             showToast('Despesa atualizada!');
           }
         } else {
@@ -1347,10 +1545,7 @@
     }
 
     function saveCardFromModal(e) {
-      e.preventDefault(); 
-      const type = document.getElementById('cardType').value; 
-      const name = document.getElementById('cardName').value.trim(); 
-      if(!name) return;
+      e.preventDefault(); const type = document.getElementById('cardType').value; const name = document.getElementById('cardName').value.trim(); if(!name) return;
       
       const editId = document.getElementById('cardIdToEdit').value;
       if (editId) {

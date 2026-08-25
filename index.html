@@ -163,6 +163,24 @@
     .bar-inc { width: 45%; max-width: 20px; background: var(--accent-green); border-radius: 3px 3px 0 0; }
     .bar-exp { width: 45%; max-width: 20px; background: var(--accent-red); border-radius: 3px 3px 0 0; }
 
+    /* NOVO: BANNER DE SALDO REAL */
+    .real-balance-banner {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: var(--card-shadow);
+        border-left: 5px solid var(--accent-green);
+    }
+    @media (max-width: 768px) {
+        .real-balance-banner { flex-direction: column; align-items: flex-start; gap: 10px; }
+        .real-balance-banner div { text-align: left !important; }
+    }
+
     @media print {
       header, .nav-bar, .table-toolbar { display: none !important; }
       .btn, button { display: none !important; }
@@ -219,6 +237,19 @@
 
     <main class="main-container">
       
+      <!-- NOVO: BANNER SALDO REAL -->
+      <div class="real-balance-banner">
+        <div>
+            <h3 style="margin: 0; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.25rem;">💰 Saldo Real em Conta (Hoje)</h3>
+            <div style="font-size: 2rem; font-weight: 700; color: var(--accent-green);" id="saldoRealConta">R$ 0,00</div>
+        </div>
+        <div style="text-align: right; color: var(--text-muted); font-size: 0.8rem; line-height: 1.4;">
+            Soma das receitas recebidas até <strong>hoje (<span id="hojeLabel"></span>)</strong><br>
+            (-) Contas já marcadas como <strong style="color:var(--accent-green);">PAGO</strong> no sistema inteiro.
+        </div>
+      </div>
+
+      <!-- VISÃO MENSAL -->
       <div id="monthView" style="display: flex; flex-direction: column; gap: 1.25rem;">
         
         <section class="kpi-grid">
@@ -737,7 +768,6 @@
 
   <div id="toast">Alterações salvas!</div>
 
-  <!-- ================= LÓGICA E JAVASCRIPT ================= -->
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBEdIIZlNHr9drPwu5RqY5e2muGOxMiKKg",
@@ -873,6 +903,7 @@
 
     function toggleTheme() { const html = document.documentElement; html.className = html.classList.contains('dark') ? 'light' : 'dark'; }
 
+    // ==========================================
     function getCycleDates(year, monthIdx) { 
         let busDays = 0; let curDay = 1; let dSal;
         while (busDays < 5) {
@@ -900,6 +931,45 @@
         };
     }
 
+    function updateRealBalance() {
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        let saldoReal = 0;
+        
+        for (let y in state.years) {
+            for (let m in state.years[y]) {
+                state.years[y][m].incomes.forEach(inc => {
+                    let incDate;
+                    if (inc.date && inc.date.includes('-')) {
+                        const [iy, im, id] = inc.date.split('-');
+                        incDate = new Date(iy, parseInt(im)-1, id);
+                    } else {
+                        incDate = new Date(y, MONTHS.indexOf(m), 1);
+                    }
+                    if (incDate <= today) {
+                        saldoReal += Number(inc.value) || 0;
+                    }
+                });
+                
+                state.years[y][m].expenses.forEach(exp => {
+                    if (exp.status === 'PAGO') {
+                        saldoReal -= Number(exp.valor) || 0;
+                    }
+                });
+            }
+        }
+        
+        const elSaldoReal = document.getElementById('saldoRealConta');
+        if (elSaldoReal) {
+            elSaldoReal.innerText = fmt(saldoReal);
+            elSaldoReal.style.color = saldoReal < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+        }
+        const elHojeLabel = document.getElementById('hojeLabel');
+        if (elHojeLabel) {
+            elHojeLabel.innerText = today.toLocaleDateString('pt-BR');
+        }
+    }
+
     function autoFillIncome(type) {
         const currentYNum = parseInt(state.currentYear, 10);
         const currentMIdx = MONTHS.indexOf(state.currentMonth);
@@ -911,6 +981,7 @@
         else if(type === 'Adiantamento') document.getElementById('incDate').value = dates.adiDateStr;
         else if(type === 'Flash') document.getElementById('incDate').value = dates.extDateStr;
     }
+    // ==========================================
 
     function getMonthData(y = state.currentYear, m = state.currentMonth) {
       if (!state.years[y]) state.years[y] = createEmptyYear();
@@ -940,9 +1011,7 @@
     function renderTabs() {
       const wrap = document.getElementById('monthTabs'); if (!wrap) return; wrap.innerHTML = '';
       MONTHS.forEach(m => { const btn = document.createElement('button'); btn.className = `month-btn ${state.currentMonth === m ? 'active' : ''}`; btn.innerText = m; btn.onclick = () => { state.currentMonth = m; renderTabs(); render(); }; wrap.appendChild(btn); });
-      
       const ann = document.createElement('button'); ann.className = `month-btn annual-btn ${state.currentMonth === 'ANNUAL' ? 'active' : ''}`; ann.innerHTML = '📊 Visão Anual'; ann.onclick = () => { state.currentMonth = 'ANNUAL'; renderTabs(); render(); }; wrap.appendChild(ann);
-      
       const inv = document.createElement('button'); inv.className = `month-btn annual-btn ${state.currentMonth === 'INVEST' ? 'active' : ''}`; inv.style.color = 'var(--accent-blue)'; inv.innerHTML = '💎 Investimentos'; inv.onclick = () => { state.currentMonth = 'INVEST'; renderTabs(); render(); }; wrap.appendChild(inv);
     }
 
@@ -1018,6 +1087,9 @@
         wrap.innerHTML = '';
         let hasCards = false;
         
+        const viewedYear = parseInt(state.currentYear, 10);
+        const viewedMonthIdx = MONTHS.indexOf(state.currentMonth);
+        
         state.cards.forEach(card => {
             let limit = Number(card.limit) || 0;
             if(limit === 0) return; 
@@ -1028,7 +1100,22 @@
                 for (let m in state.years[y]) {
                     state.years[y][m].expenses.forEach(e => {
                         if (e.formaPgto === card.name && e.status !== 'PAGO') {
-                            used += Number(e.valor) || 0;
+                            
+                            let isInstallment = e.parcela && e.parcela.includes('/');
+                            let expYear = 9999;
+                            let expMonthIdx = 11;
+                            
+                            if (e.vencimento && e.vencimento.includes('/')) {
+                                const parts = e.vencimento.split('/');
+                                expYear = parseInt(parts[2], 10);
+                                expMonthIdx = parseInt(parts[1], 10) - 1;
+                            }
+                            
+                            let isUpToViewedMonth = (expYear < viewedYear) || (expYear === viewedYear && expMonthIdx <= viewedMonthIdx);
+
+                            if (isInstallment || isUpToViewedMonth) {
+                                used += Number(e.valor) || 0;
+                            }
                         }
                     });
                 }
@@ -1058,6 +1145,8 @@
     function render() {
       const hy = document.getElementById('headerYear'); if (hy) hy.innerText = state.currentYear;
       
+      updateRealBalance();
+
       if (state.currentMonth === 'ANNUAL') { 
           document.getElementById('monthView').style.display = 'none'; document.getElementById('investView').style.display = 'none'; document.getElementById('annualView').style.display = 'flex'; renderAnnual(); return; 
       } else if (state.currentMonth === 'INVEST') {
@@ -1180,18 +1269,14 @@
       const data = getMonthData();
       let allItems = [...data.expenses];
 
-      // Busca faturas futuras (comprado neste mês, vence depois)
       for(let y in state.years) {
           for(let m in state.years[y]) {
-              if (y == currentYNum && m == state.currentMonth) continue; // Pula o mes atual real
+              if (y == currentYNum && m == state.currentMonth) continue; 
 
               state.years[y][m].expenses.forEach(fe => {
                   if(fe.dataDespesa && fe.dataDespesa.endsWith(currentSuffix)) {
                       if (!fe.vencimento.endsWith(currentSuffix)) {
                           
-                          // Correção do Bug de Fantasmas Repetidos:
-                          // Só mostra fantasma se não for uma repetição (parcela > 1) 
-                          // e só mostramos UM fantasma para contas fixas para não poluir
                           let isFutureInstallment = false;
                           if (fe.parcela && fe.parcela.includes('/')) {
                               const curInst = parseInt(fe.parcela.split('/')[0], 10);
@@ -1199,7 +1284,6 @@
                           }
                           
                           if (!isFutureInstallment) {
-                              // Se for conta fixa repetida infinitamente, vai criar uma chave para mostrar só 1
                               const ghostKey = `${fe.descricao}-${fe.valor}-${fe.dataDespesa}`;
                               if (!allItems.some(a => a.ghostKey === ghostKey)) {
                                   allItems.push({ ...fe, isFutureView: true, originalMonthName: m, originalYear: y, ghostKey: ghostKey });
@@ -1307,7 +1391,6 @@
         }
     }
 
-    // ====== NOVO: PAGAR FATURA EM LOTE ======
     function openBulkPayModal() {
         const sel = document.getElementById('bulkPayCardSelect');
         sel.innerHTML = '';
@@ -1541,18 +1624,12 @@
               
               let parcStr = parc; 
               if (repType === 'installments') { parcStr = `${currentInstNum}/${totInst}`; }
-              
-              // Se for conta fixa (Ex: internet repetindo pra sempre), a Data de Compra original não precisa ir para o futuro
-              let buyDateToSave = displayBuyDate;
-              if(repType === 'fixed' && i > 0) {
-                 buyDateToSave = '';
-              }
 
               state.years[targetYearStr][targetMonthName].expenses.push({
                 id: String('e_' + Date.now() + '_' + i + '_' + Math.random().toString(36).substr(2, 4)),
                 descricao: desc, valor: val, categoria: cat, formaPgto: pay,
                 status: i === 0 ? stat : 'À PAGAR',
-                vencimento: targetDueDate, dataDespesa: buyDateToSave,
+                vencimento: targetDueDate, dataDespesa: displayBuyDate,
                 parcela: parcStr, obs: obs
               });
             }

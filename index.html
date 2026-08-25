@@ -163,23 +163,8 @@
     .bar-inc { width: 45%; max-width: 20px; background: var(--accent-green); border-radius: 3px 3px 0 0; }
     .bar-exp { width: 45%; max-width: 20px; background: var(--accent-red); border-radius: 3px 3px 0 0; }
 
-    /* NOVO: BANNER DE SALDO REAL */
-    .real-balance-banner {
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-        border-radius: 0.75rem;
-        padding: 1.25rem 1.5rem;
-        margin-bottom: 1.25rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        box-shadow: var(--card-shadow);
-        border-left: 5px solid var(--accent-green);
-    }
-    @media (max-width: 768px) {
-        .real-balance-banner { flex-direction: column; align-items: flex-start; gap: 10px; }
-        .real-balance-banner div { text-align: left !important; }
-    }
+    .real-balance-banner { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--card-shadow); border-left: 5px solid var(--accent-green); }
+    @media (max-width: 768px) { .real-balance-banner { flex-direction: column; align-items: flex-start; gap: 10px; } .real-balance-banner div { text-align: left !important; } }
 
     @media print {
       header, .nav-bar, .table-toolbar { display: none !important; }
@@ -237,7 +222,6 @@
 
     <main class="main-container">
       
-      <!-- NOVO: BANNER SALDO REAL -->
       <div class="real-balance-banner">
         <div>
             <h3 style="margin: 0; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.25rem;">💰 Saldo Real em Conta (Hoje)</h3>
@@ -249,7 +233,6 @@
         </div>
       </div>
 
-      <!-- VISÃO MENSAL -->
       <div id="monthView" style="display: flex; flex-direction: column; gap: 1.25rem;">
         
         <section class="kpi-grid">
@@ -278,14 +261,8 @@
             <div class="kpi-value" id="kpiPending" style="color: var(--accent-yellow);">R$ 0,00</div>
             <div class="kpi-subtext" id="kpiPendingCount">0 pendentes</div>
           </div>
-          <div class="kpi-card kpi-saved">
-            <div class="kpi-title"><span>Invest./Guardado</span><span>💎</span></div>
-            <div class="kpi-value" id="kpiSaved" style="color: var(--accent-purple);">R$ 0,00</div>
-            <div class="kpi-subtext">Reservas e poupança</div>
-          </div>
         </section>
 
-        <!-- POTES DE PLANEJAMENTO -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
             <div class="plan-box">
               <h4 style="color: var(--accent-blue); margin-bottom: 8px; display: flex; justify-content: space-between;">
@@ -419,7 +396,6 @@
         </div>
       </div>
 
-      <!-- VISÃO ANUAL -->
       <div id="annualView" style="display: none; flex-direction: column; gap: 1.25rem;">
         <section class="kpi-grid">
           <div class="kpi-card kpi-incomes"><div class="kpi-title"><span>Entradas no Ano</span><span>📈</span></div><div class="kpi-value" id="annIncomes" style="color: var(--accent-green);">R$ 0,00</div><div class="kpi-subtext">Soma dos 12 meses</div></div>
@@ -462,7 +438,6 @@
         </div>
       </div>
 
-      <!-- VISÃO INVESTIMENTOS -->
       <div id="investView" style="display: none; flex-direction: column; gap: 1.25rem;">
         <div class="kpi-card kpi-saved" style="text-align:center; padding: 3rem;">
             <div class="kpi-title" style="justify-content:center;"><span>Patrimônio / Reservas Acumuladas</span></div>
@@ -903,7 +878,6 @@
 
     function toggleTheme() { const html = document.documentElement; html.className = html.classList.contains('dark') ? 'light' : 'dark'; }
 
-    // ==========================================
     function getCycleDates(year, monthIdx) { 
         let busDays = 0; let curDay = 1; let dSal;
         while (busDays < 5) {
@@ -981,7 +955,6 @@
         else if(type === 'Adiantamento') document.getElementById('incDate').value = dates.adiDateStr;
         else if(type === 'Flash') document.getElementById('incDate').value = dates.extDateStr;
     }
-    // ==========================================
 
     function getMonthData(y = state.currentYear, m = state.currentMonth) {
       if (!state.years[y]) state.years[y] = createEmptyYear();
@@ -1081,14 +1054,15 @@
       document.getElementById('expVencDate').value = `${outY}-${outM}-${outD}`;
     }
 
+    // ====== LIMITE DE CARTÕES CORRIGIDO ======
     function renderLimits() {
         const wrap = document.getElementById('limitsList');
         if(!wrap) return;
         wrap.innerHTML = '';
         let hasCards = false;
         
-        const viewedYear = parseInt(state.currentYear, 10);
-        const viewedMonthIdx = MONTHS.indexOf(state.currentMonth);
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
         
         state.cards.forEach(card => {
             let limit = Number(card.limit) || 0;
@@ -1100,21 +1074,26 @@
                 for (let m in state.years[y]) {
                     state.years[y][m].expenses.forEach(e => {
                         if (e.formaPgto === card.name && e.status !== 'PAGO') {
-                            
                             let isInstallment = e.parcela && e.parcela.includes('/');
-                            let expYear = 9999;
-                            let expMonthIdx = 11;
                             
-                            if (e.vencimento && e.vencimento.includes('/')) {
-                                const parts = e.vencimento.split('/');
-                                expYear = parseInt(parts[2], 10);
-                                expMonthIdx = parseInt(parts[1], 10) - 1;
-                            }
-                            
-                            let isUpToViewedMonth = (expYear < viewedYear) || (expYear === viewedYear && expMonthIdx <= viewedMonthIdx);
-
-                            if (isInstallment || isUpToViewedMonth) {
+                            if (isInstallment) {
+                                // Parcelas consomem o limite total instantaneamente
                                 used += Number(e.valor) || 0;
+                            } else {
+                                // Assinaturas/Contas Fixas só consomem o limite se a data da compra 
+                                // ou vencimento já chegou (não bloqueia limite do ano que vem)
+                                let dateToCompare = null;
+                                if (e.dataDespesa && e.dataDespesa.includes('/')) {
+                                    const p = e.dataDespesa.split('/');
+                                    dateToCompare = new Date(p[2], p[1] - 1, p[0]);
+                                } else if (e.vencimento && e.vencimento.includes('/')) {
+                                    const p = e.vencimento.split('/');
+                                    dateToCompare = new Date(p[2], p[1] - 1, p[0]);
+                                }
+                                
+                                if (dateToCompare && dateToCompare <= today) {
+                                    used += Number(e.valor) || 0;
+                                }
                             }
                         }
                     });
@@ -1260,6 +1239,7 @@
       renderTable();
     }
 
+    // ====== LIMPEZA DE FANTASMAS FIXOS ======
     function renderTable() {
       const currentMIdx = MONTHS.indexOf(state.currentMonth);
       const currentYNum = parseInt(state.currentYear, 10);
@@ -1500,6 +1480,7 @@
     function saveExpenseFromButton(e) { if (e) e.preventDefault(); saveExpense(); }
     document.getElementById('expenseForm').addEventListener('submit', function(e) { e.preventDefault(); saveExpense(); });
 
+    // ====== FIX: NÃO COPIAR DATA DE COMPRA PARA CONTAS FIXAS ======
     function saveExpense() {
       try {
         const id = document.getElementById('expId').value;
@@ -1574,6 +1555,15 @@
                                     e.formaPgto = pay;
                                     e.obs = obs;
                                     
+                                    // Se for parcela de uma compra, atualiza a data de compra igual
+                                    if (e.parcela && e.parcela.includes('/')) {
+                                        e.dataDespesa = displayBuyDate;
+                                    } else {
+                                        // Se for conta fixa recorrente, ZERA a data da compra futura 
+                                        // para não dar erro de fantasma
+                                        e.dataDespesa = '';
+                                    }
+                                    
                                     const card = (state.cards || []).find(c => c.name === pay);
                                     if(card && e.dataDespesa) {
                                         const parts = e.dataDespesa.split('/');
@@ -1624,12 +1614,18 @@
               
               let parcStr = parc; 
               if (repType === 'installments') { parcStr = `${currentInstNum}/${totInst}`; }
+              
+              // Se for conta fixa, não copia a data da compra pro futuro para não gerar fantasma!
+              let buyDateToSave = displayBuyDate;
+              if (repType === 'fixed' && i > 0) {
+                  buyDateToSave = '';
+              }
 
               state.years[targetYearStr][targetMonthName].expenses.push({
                 id: String('e_' + Date.now() + '_' + i + '_' + Math.random().toString(36).substr(2, 4)),
                 descricao: desc, valor: val, categoria: cat, formaPgto: pay,
                 status: i === 0 ? stat : 'À PAGAR',
-                vencimento: targetDueDate, dataDespesa: displayBuyDate,
+                vencimento: targetDueDate, dataDespesa: buyDateToSave,
                 parcela: parcStr, obs: obs
               });
             }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Controle Financeiro</title>
+  <title>Controle Financeiro Familiar</title>
   <meta name="theme-color" content="#0f172a">
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -38,7 +38,7 @@
     td { padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
     tbody tr:hover { background-color: rgba(255, 255, 255, 0.02); }
     .status-badge { padding: 0.2rem 0.55rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 700; cursor: pointer; display: inline-block; user-select: none; transition: transform 0.1s; }
-    .status-pago { background: rgba(16,185,129,0.15); color: var(--accent-green); border: 1px solid var(--accent-green); } .status-a-pagar { background: rgba(245,158,11,0.15); color: var(--accent-yellow); border: 1px solid var(--accent-yellow); } .status-guardado { background: rgba(56,189,248,0.15); color: var(--accent-blue); border: 1px solid var(--accent-blue); }
+    .status-pago { background: rgba(16,185,129,0.15); color: var(--accent-green); border: 1px solid var(--accent-green); } .status-a-pagar { background: rgba(245,158,11,0.15); color: var(--accent-yellow); border: 1px solid var(--accent-yellow); } .status-guardado { background: rgba(56,189,248,0.15); color: var(--accent-blue); border: 1px solid var(--accent-blue); } .status-nao-aplicavel { background: var(--bg-tertiary); color: var(--text-muted); border: 1px solid var(--border-color); }
     .cat-tag { padding: 0.15rem 0.5rem; border-radius: 0.35rem; font-size: 0.75rem; font-weight: 600; }
     .future-row { opacity: 0.45; background-color: rgba(255, 255, 255, 0.02); } .future-row td { color: var(--text-muted); }
     .btn { padding: 0.45rem 0.85rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: 1px solid transparent; display: inline-flex; align-items: center; gap: 0.35rem; transition: all 0.15s; }
@@ -75,7 +75,12 @@
     </header>
 
     <div class="nav-bar">
-      <div style="display: flex; align-items: center; gap: 0.5rem;"><span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">ANO:</span><select id="yearSelect" onchange="changeYear(this.value)" style="font-weight: 700;"></select><button class="btn btn-primary btn-sm" onclick="openNewYearModal()">+ Novo Ano</button><button class="btn btn-danger btn-sm" onclick="deleteCurrentYear()">🗑️ Excluir Ano</button></div>
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);">ANO:</span>
+        <select id="yearSelect" onchange="changeYear(this.value)" style="font-weight: 700;"></select>
+        <button class="btn btn-primary btn-sm" onclick="openNewYearModal()">+ Novo Ano</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCurrentYear()">🗑️ Excluir Ano</button>
+      </div>
       <div class="month-tabs" id="monthTabs"></div>
     </div>
 
@@ -86,12 +91,15 @@
       </div>
 
       <div id="monthView" style="display: flex; flex-direction: column; gap: 1.25rem;">
+        
+        <!-- KPIs COMPLETOS RESTAURADOS -->
         <section class="kpi-grid">
-          <div class="kpi-card kpi-prev"><div class="kpi-title"><span>Saldo Anterior</span><span>⏮️</span></div><div class="kpi-value" id="kpiPrevBalance" style="color: var(--accent-blue);">R$ 0,00</div></div>
-          <div class="kpi-card kpi-incomes"><div class="kpi-title"><span>Total Entradas</span><span>💰</span></div><div class="kpi-value" id="kpiIncomes" style="color: var(--accent-green);">R$ 0,00</div></div>
-          <div class="kpi-card kpi-expenses"><div class="kpi-title"><span>Total Saídas</span><span>💳</span></div><div class="kpi-value" id="kpiExpenses" style="color: var(--accent-red);">R$ 0,00</div></div>
-          <div class="kpi-card" id="kpiBalanceCard"><div class="kpi-title"><span>Saldo Disponível</span><span>📊</span></div><div class="kpi-value" id="kpiBalance">R$ 0,00</div></div>
-          <div class="kpi-card kpi-pending"><div class="kpi-title"><span>Total À Pagar</span><span>⏳</span></div><div class="kpi-value" id="kpiPending" style="color: var(--accent-yellow);">R$ 0,00</div></div>
+          <div class="kpi-card kpi-prev"><div class="kpi-title"><span>Saldo Anterior</span><span>⏮️</span></div><div class="kpi-value" id="kpiPrevBalance" style="color: var(--accent-blue);">R$ 0,00</div><div class="kpi-subtext">Sobra de meses passados</div></div>
+          <div class="kpi-card kpi-incomes"><div class="kpi-title"><span>Total Entradas</span><span>💰</span></div><div class="kpi-value" id="kpiIncomes" style="color: var(--accent-green);">R$ 0,00</div><div class="kpi-subtext">Salários e Rendas do mês</div></div>
+          <div class="kpi-card kpi-expenses"><div class="kpi-title"><span>Total Saídas</span><span>💳</span></div><div class="kpi-value" id="kpiExpenses" style="color: var(--accent-red);">R$ 0,00</div><div class="kpi-subtext" id="kpiCount">0 contas</div></div>
+          <div class="kpi-card" id="kpiBalanceCard"><div class="kpi-title"><span>Saldo Disponível</span><span id="kpiBalanceIcon">📊</span></div><div class="kpi-value" id="kpiBalance">R$ 0,00</div><div class="kpi-subtext">Saldo Anterior + Entradas - Saídas</div></div>
+          <div class="kpi-card kpi-pending"><div class="kpi-title"><span>Total À Pagar</span><span>⏳</span></div><div class="kpi-value" id="kpiPending" style="color: var(--accent-yellow);">R$ 0,00</div><div class="kpi-subtext" id="kpiPendingCount">0 pendentes</div></div>
+          <div class="kpi-card kpi-saved"><div class="kpi-title"><span>Invest./Guardado</span><span>💎</span></div><div class="kpi-value" id="kpiSaved" style="color: var(--accent-purple);">R$ 0,00</div><div class="kpi-subtext">Reservas e poupança</div></div>
         </section>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
@@ -109,7 +117,7 @@
 
           <div class="content-card">
             <div class="card-header"><h2 style="font-size: 0.95rem;">📑 Saídas de <span id="monthTitle" style="color: var(--accent-blue);"></span></h2><button class="btn btn-primary btn-sm" onclick="openExpenseModal()">+ Nova Despesa</button></div>
-            <div class="table-toolbar"><div style="display: flex; gap: 0.4rem; flex-wrap: wrap; flex: 1;"><input type="text" id="searchTable" placeholder="🔍 Buscar..." oninput="renderTable()" style="min-width: 170px;"><select id="filterCat" onchange="renderTable()"></select><select id="filterPay" onchange="renderTable()"></select><select id="filterStat" onchange="renderTable()"><option value="">Todos Status</option><option value="PAGO">Pago</option><option value="À PAGAR">À Pagar</option><option value="GUARDADO">Guardado</option></select><button class="btn btn-success btn-sm" onclick="openBulkPayModal()">💳 Pagar Fatura Lote</button></div><div class="flex-between" style="gap: 0.5rem;"><span id="tableCount" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">0 itens</span><button class="btn btn-secondary btn-sm" onclick="clearFilters()">↺ Limpar</button></div></div>
+            <div class="table-toolbar"><div style="display: flex; gap: 0.4rem; flex-wrap: wrap; flex: 1;"><input type="text" id="searchTable" placeholder="🔍 Buscar..." oninput="renderTable()" style="min-width: 170px;"><select id="filterCat" onchange="renderTable()"></select><select id="filterPay" onchange="renderTable()"></select><select id="filterStat" onchange="renderTable()"><option value="">Todos Status</option><option value="PAGO">Pago</option><option value="À PAGAR">À Pagar</option><option value="GUARDADO">Guardado</option><option value="NÃO APLICÁVEL">Não Aplicável</option></select><button class="btn btn-success btn-sm" onclick="openBulkPayModal()">💳 Pagar Fatura Lote</button></div><div class="flex-between" style="gap: 0.5rem;"><span id="tableCount" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">0 itens</span><button class="btn btn-secondary btn-sm" onclick="clearFilters()">↺ Limpar</button></div></div>
             <div class="table-container">
               <table><thead><tr><th onclick="sortTable('formaPgto')">Forma Pgto ⇅</th><th onclick="sortTable('descricao')">Descrição ⇅</th><th onclick="sortTable('categoria')">Categoria ⇅</th><th onclick="sortTable('valor')">Valor (R$) ⇅</th><th onclick="sortTable('dataDespesa')">Compra ⇅</th><th onclick="sortTable('vencimento')">Vencimento ⇅</th><th onclick="sortTable('status')">Status ⇅</th><th onclick="sortTable('parcela')">Parcela ⇅</th><th>Obs</th><th style="text-align: right;">Ações</th></tr></thead><tbody id="expenseTableBody"></tbody></table>
             </div>
@@ -124,7 +132,7 @@
       </div>
 
       <div id="investView" style="display: none; flex-direction: column; gap: 1.25rem;">
-        <div class="kpi-card kpi-saved" style="text-align:center; padding: 3rem;"><div class="kpi-title" style="justify-content:center;"><span>Patrimônio / Reservas</span></div><div class="kpi-value" id="invTotal" style="font-size: 3rem; color: var(--accent-blue);">R$ 0,00</div></div>
+        <div class="kpi-card kpi-saved" style="text-align:center; padding: 3rem;"><div class="kpi-title" style="justify-content:center;"><span>Patrimônio / Reservas Acumuladas</span></div><div class="kpi-value" id="invTotal" style="font-size: 3rem; color: var(--accent-blue);">R$ 0,00</div></div>
         <div class="content-card"><div class="card-header"><h2>Extrato de Aportes</h2></div><div class="table-container"><table><thead><tr><th>Data</th><th>Descrição</th><th>Onde</th><th>Valor</th></tr></thead><tbody id="investTableBody"></tbody></table></div></div>
       </div>
     </main>
@@ -142,7 +150,7 @@
             <div><label class="lbl">Valor (R$) *</label><input type="number" step="0.01" min="0.01" id="expVal" class="w-100" required></div>
             <div><label class="lbl">Categoria *</label><input type="text" id="expCat" list="catList" class="w-100" required><datalist id="catList"></datalist></div>
             <div><label class="lbl">Forma Pgto / Cartão *</label><select id="expPay" class="w-100" onchange="autoCalcVencimento()" required></select></div>
-            <div><label class="lbl">Status</label><select id="expStat" class="w-100"><option value="PAGO">PAGO</option><option value="À PAGAR" selected>À PAGAR</option><option value="GUARDADO">GUARDADO</option></select></div>
+            <div><label class="lbl">Status</label><select id="expStat" class="w-100"><option value="PAGO">PAGO</option><option value="À PAGAR" selected>À PAGAR</option><option value="GUARDADO">GUARDADO</option><option value="NÃO APLICÁVEL">NÃO APLICÁVEL</option></select></div>
             <div><label class="lbl">Data da Compra</label><input type="date" id="expDataDespesa" class="w-100" onchange="autoCalcVencimento()"></div>
             <div><label class="lbl">📅 Data Vencimento *</label><input type="date" id="expVencDate" class="w-100" required></div>
             <div id="standaloneParcWrap"><label class="lbl">Parcela (Ex: 1/12)</label><input type="text" id="expParc" class="w-100"></div>
@@ -413,7 +421,7 @@
           });
         });
 
-        $('kpiPrevBalance').innerText = fmt(saldoAnterior); $('kpiPrevBalance').style.color = saldoAnterior >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)';
+        if($('kpiPrevBalance')) { $('kpiPrevBalance').innerText = fmt(saldoAnterior); $('kpiPrevBalance').style.color = saldoAnterior >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)'; }
         const data = getMonthData();
         const totInc = (data.incomes||[]).reduce((s, i) => s + (Number(i.value) || 0), 0); const totExp = (data.expenses||[]).reduce((s, e) => s + (Number(e.valor) || 0), 0);
         const bal = totInc - totExp; const availableBalance = saldoAnterior + bal;
@@ -422,8 +430,15 @@
         const pendCount = (data.expenses||[]).filter(e => e.status === 'À PAGAR' || e.status === 'A PAGAR').length;
         const saved = (data.expenses||[]).filter(e => e.status === 'GUARDADO' || (e.categoria || '').toUpperCase() === 'INVESTIMENTO').reduce((s, e) => s + (Number(e.valor) || 0), 0);
 
-        $('kpiIncomes').innerText = fmt(totInc); $('kpiExpenses').innerText = fmt(totExp); $('kpiCount').innerText = `${(data.expenses||[]).length} contas`; $('kpiPending').innerText = fmt(pend); $('kpiPendingCount').innerText = `${pendCount} pendentes`; $('kpiSaved').innerText = fmt(saved);
-        $('kpiBalance').innerText = fmt(availableBalance); $('kpiBalanceCard').className = `kpi-card ${availableBalance >= 0 ? 'kpi-balance-pos' : 'kpi-balance-neg'}`; $('kpiBalance').style.color = availableBalance >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'; $('kpiBalanceIcon').innerText = availableBalance >= 0 ? '✅' : '⚠️';
+        if($('kpiIncomes')) $('kpiIncomes').innerText = fmt(totInc); 
+        if($('kpiExpenses')) $('kpiExpenses').innerText = fmt(totExp); 
+        if($('kpiCount')) $('kpiCount').innerText = `${(data.expenses||[]).length} contas`; 
+        if($('kpiPending')) $('kpiPending').innerText = fmt(pend); 
+        if($('kpiPendingCount')) $('kpiPendingCount').innerText = `${pendCount} pendentes`; 
+        if($('kpiSaved')) $('kpiSaved').innerText = fmt(saved);
+        if($('kpiBalance')) { $('kpiBalance').innerText = fmt(availableBalance); $('kpiBalance').style.color = availableBalance >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'; }
+        if($('kpiBalanceCard')) $('kpiBalanceCard').className = `kpi-card ${availableBalance >= 0 ? 'kpi-balance-pos' : 'kpi-balance-neg'}`; 
+        if($('kpiBalanceIcon')) $('kpiBalanceIcon').innerText = availableBalance >= 0 ? '✅' : '⚠️';
 
         const dates = getCycleDates(parseInt(state.currentYear), MONTHS.indexOf(state.currentMonth));
         let incC1 = 0, expC1 = 0, incC2 = 0, expC2 = 0, incC3 = 0, expC3 = 0;
@@ -436,30 +451,36 @@
            if (exp.vencimento && exp.vencimento.includes('/')) { let d = parseInt(exp.vencimento.split('/')[0], 10); if (d < dates.adi) expC1 += Number(exp.valor); else if (d < dates.ext) expC2 += Number(exp.valor); else expC3 += Number(exp.valor); }
         });
 
-        $('lblDate1').innerText = String(dates.adi - 1).padStart(2, '0'); $('planInc1').innerText = fmt(incC1); $('planExp1').innerText = fmt(expC1); const bC1 = incC1 - expC1; $('planBal1').innerText = fmt(bC1); $('planBal1').style.color = bC1 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
-        $('lblDate2A').innerText = String(dates.adi).padStart(2, '0'); $('lblDate2B').innerText = String(dates.ext - 1).padStart(2, '0'); $('planInc2').innerText = fmt(incC2); $('planExp2').innerText = fmt(expC2); const bC2 = incC2 - expC2; $('planBal2').innerText = fmt(bC2); $('planBal2').style.color = bC2 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
-        $('lblDate3').innerText = String(dates.ext).padStart(2, '0'); $('planInc3').innerText = fmt(incC3); $('planExp3').innerText = fmt(expC3); const bC3 = incC3 - expC3; $('planBal3').innerText = fmt(bC3); $('planBal3').style.color = bC3 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+        if($('lblDate1')) {
+          $('lblDate1').innerText = String(dates.adi - 1).padStart(2, '0'); $('planInc1').innerText = fmt(incC1); $('planExp1').innerText = fmt(expC1); const bC1 = incC1 - expC1; $('planBal1').innerText = fmt(bC1); $('planBal1').style.color = bC1 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+          $('lblDate2A').innerText = String(dates.adi).padStart(2, '0'); $('lblDate2B').innerText = String(dates.ext - 1).padStart(2, '0'); $('planInc2').innerText = fmt(incC2); $('planExp2').innerText = fmt(expC2); const bC2 = incC2 - expC2; $('planBal2').innerText = fmt(bC2); $('planBal2').style.color = bC2 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+          $('lblDate3').innerText = String(dates.ext).padStart(2, '0'); $('planInc3').innerText = fmt(incC3); $('planExp3').innerText = fmt(expC3); const bC3 = incC3 - expC3; $('planBal3').innerText = fmt(bC3); $('planBal3').style.color = bC3 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+        }
 
-        const incList = $('incomesList'); incList.innerHTML = '';
-        (data.incomes||[]).forEach((inc, idx) => {
-          let dateStr = ''; if(inc.date) { const p = inc.date.split('-'); dateStr = `<small style="color:var(--text-muted); font-size:0.75rem;">(${p[2]}/${p[1]})</small> `; }
-          incList.innerHTML += `<div class="list-item"><span style="font-weight:600; font-size:0.85rem;">${dateStr}${inc.name}</span><div style="display:flex; align-items:center;"><strong style="color: var(--accent-green); margin-right: 0.5rem; font-size:0.9rem;">${fmt(inc.value)}</strong><button class="btn btn-secondary btn-icon btn-sm" onclick="openIncomeModal(${idx})">✏️</button>&nbsp;<button class="btn btn-danger btn-icon btn-sm" onclick="delIncome(${idx})">🗑️</button></div></div>`;
-        });
-        $('incomeTotalFooter').innerText = fmt(totInc);
+        const incList = $('incomesList'); if (incList) { incList.innerHTML = '';
+          (data.incomes||[]).forEach((inc, idx) => {
+            let dateStr = ''; if(inc.date) { const p = inc.date.split('-'); dateStr = `<small style="color:var(--text-muted); font-size:0.75rem;">(${p[2]}/${p[1]})</small> `; }
+            incList.innerHTML += `<div class="list-item"><span style="font-weight:600; font-size:0.85rem;">${dateStr}${inc.name}</span><div style="display:flex; align-items:center;"><strong style="color: var(--accent-green); margin-right: 0.5rem; font-size:0.9rem;">${fmt(inc.value)}</strong><button class="btn btn-secondary btn-icon btn-sm" onclick="openIncomeModal(${idx})">✏️</button>&nbsp;<button class="btn btn-danger btn-icon btn-sm" onclick="delIncome(${idx})">🗑️</button></div></div>`;
+          });
+          $('incomeTotalFooter').innerText = fmt(totInc);
+        }
 
         const catTotals = {}; state.categories.forEach(c => catTotals[c.name] = 0);
         (data.expenses||[]).forEach(e => { const c = (e.categoria || 'OUTROS').toUpperCase(); catTotals[c] = (catTotals[c] || 0) + (Number(e.valor) || 0); });
-        let sumCategorized = 0; const catList = $('categoriesList'); catList.innerHTML = '';
-        const catArray = Object.keys(catTotals).map(cName => { const val = catTotals[cName]; sumCategorized += val; const col = state.categories.find(c => c.name.toUpperCase() === cName.toUpperCase())?.color || '#38bdf8'; return { name: cName, val, col }; }).sort((a, b) => b.val - a.val);
+        let sumCategorized = 0; const catList = $('categoriesList'); 
+        if(catList) {
+            catList.innerHTML = '';
+            const catArray = Object.keys(catTotals).map(cName => { const val = catTotals[cName]; sumCategorized += val; const col = state.categories.find(c => c.name.toUpperCase() === cName.toUpperCase())?.color || '#38bdf8'; return { name: cName, val, col }; }).sort((a, b) => b.val - a.val);
 
-        let hasCats = false;
-        catArray.forEach(item => {
-          if (item.val > 0) { hasCats = true; const pct = sumCategorized > 0 ? (item.val / sumCategorized) * 100 : 0;
-              catList.innerHTML += `<div class="cat-item"><div class="cat-header-line"><span><span class="cat-dot" style="background:${item.col};"></span>${item.name}</span><span><strong>${fmt(item.val)}</strong> <small style="color:var(--text-muted);">(${pct.toFixed(0)}%)</small></span></div><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%; background:${item.col};"></div></div></div>`;
-          }
-        });
-        if (!hasCats) { catList.innerHTML = `<div style="text-align: center; padding: 1rem; color: var(--text-muted); font-size: 0.85rem;">Nenhum gasto neste mês.</div>`; }
-        $('catTotalFooter').innerText = fmt(sumCategorized);
+            let hasCats = false;
+            catArray.forEach(item => {
+              if (item.val > 0) { hasCats = true; const pct = sumCategorized > 0 ? (item.val / sumCategorized) * 100 : 0;
+                  catList.innerHTML += `<div class="cat-item"><div class="cat-header-line"><span><span class="cat-dot" style="background:${item.col};"></span>${item.name}</span><span><strong>${fmt(item.val)}</strong> <small style="color:var(--text-muted);">(${pct.toFixed(0)}%)</small></span></div><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%; background:${item.col};"></div></div></div>`;
+              }
+            });
+            if (!hasCats) { catList.innerHTML = `<div style="text-align: center; padding: 1rem; color: var(--text-muted); font-size: 0.85rem;">Nenhum gasto neste mês.</div>`; }
+            $('catTotalFooter').innerText = fmt(sumCategorized);
+        }
 
         renderLimits(); renderTable();
       } catch(err) { console.error("Render Erro:", err); }
@@ -487,7 +508,7 @@
           }
       }
 
-      const tbody = $('expenseTableBody'); tbody.innerHTML = '';
+      const tbody = $('expenseTableBody'); if(!tbody) return; tbody.innerHTML = '';
       const q = $('searchTable').value.toLowerCase().trim(); const fCat = $('filterCat').value; const fPay = $('filterPay').value; const fStat = $('filterStat').value;
       let list = allItems.filter(e => { if (fCat && e.categoria !== fCat) return false; if (fPay && e.formaPgto !== fPay) return false; if (fStat && e.status !== fStat) return false; if (q && !`${e.descricao} ${e.formaPgto} ${e.categoria} ${e.obs || ''} ${e.parcela || ''} ${e.vencimento || ''}`.toLowerCase().includes(q)) return false; return true; });
       list.sort((a, b) => { let va = a[currentSort.col], vb = b[currentSort.col]; if (currentSort.col === 'valor') { va = Number(va) || 0; vb = Number(vb) || 0; } return currentSort.dir === 'asc' ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1); });

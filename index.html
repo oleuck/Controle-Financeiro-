@@ -153,12 +153,24 @@
 </head>
 <body>
 
-  <!-- TELA DE SELEÇÃO DE USUÁRIO -->
+  <!-- TELA DE SELEÇÃO DE USUÁRIO E SENHA -->
   <div id="userSelectionOverlay">
-      <h2 style="font-size: 1.8rem; text-align: center; color: var(--text-main);">Quem está acessando?</h2>
-      <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center;">
-          <button class="user-btn btn-otavio" onclick="selectUser('otavio')">👨 Otávio</button>
-          <button class="user-btn btn-alessandra" onclick="selectUser('alessandra')">👩 Alessandra</button>
+      <div id="stepSelectUser" style="display: flex; flex-direction: column; align-items: center; gap: 1.5rem;">
+          <h2 style="font-size: 1.8rem; text-align: center; color: var(--text-main);">Quem está acessando?</h2>
+          <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center;">
+              <button class="user-btn btn-otavio" onclick="promptPassword('otavio')">👨 Otávio</button>
+              <button class="user-btn btn-alessandra" onclick="promptPassword('alessandra')">👩 Alessandra</button>
+          </div>
+      </div>
+      
+      <div id="stepPassword" style="display: none; flex-direction: column; align-items: center; gap: 1rem;">
+          <h2 id="pwdTitle" style="color: var(--text-main);">Digite a Senha</h2>
+          <input type="password" id="loginPwd" style="padding: 0.75rem; border-radius: 0.5rem; font-size: 1.2rem; text-align: center; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-main);" placeholder="••••••" onkeypress="if(event.key === 'Enter') doLogin()">
+          <div style="display: flex; gap: 1rem;">
+              <button class="btn btn-secondary" onclick="cancelLogin()">Voltar</button>
+              <button class="btn btn-primary" onclick="doLogin()">Entrar</button>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 10px;">Dica: Senha universal ou a senha pessoal definida.</div>
       </div>
   </div>
 
@@ -167,7 +179,6 @@
       <div style="display: flex; align-items: center; gap: 0.75rem;">
         <h1 style="font-size: 1.15rem; font-weight: 700;">Controle de Gastos <span style="font-size: 0.75rem; padding: 0.2rem 0.5rem; background: rgba(56,189,248,0.15); color: var(--accent-blue); border-radius: 9999px;" id="headerYear">2026</span></h1>
         
-        <!-- BOTÃO DE USUÁRIO AGORA É CLICÁVEL -->
         <div class="header-user-badge" onclick="switchUser()" title="Trocar de Usuário">
           <span class="sync-indicator" id="syncDot"></span>
           <span id="userEmailBadge">👤 Usuário</span> &nbsp;🔄
@@ -178,6 +189,7 @@
         <button class="btn btn-secondary btn-sm" onclick="openCatModal()">🏷️ Categorias</button>
         <button class="btn btn-secondary btn-sm" onclick="openPayModal()">💵 Formas Pgto</button>
         <button class="btn btn-secondary btn-sm" onclick="openCardModal()" style="color: var(--accent-yellow);">💳 Cartões</button>
+        <button class="btn btn-secondary btn-sm" onclick="openPwdModal()">🔑 Senha</button>
         <button class="btn btn-secondary btn-sm" onclick="launchFerias()">🏖️ Férias</button>
         <button class="btn btn-secondary btn-sm" onclick="launch13()">🎁 13º</button>
         <button class="btn btn-secondary btn-sm" onclick="exportDataJSON()">📥 Backup</button>
@@ -411,6 +423,18 @@
         </div>
       </div>
     </main>
+  </div>
+
+  <!-- MODAL DE SENHA -->
+  <div class="modal-overlay" id="pwdModal">
+    <div class="modal-box" style="max-width: 400px;">
+        <div class="modal-header"><h3>Configurar Senha Pessoal</h3><button class="btn btn-secondary btn-icon" onclick="closeModal('pwdModal')">✕</button></div>
+        <div class="modal-body">
+            <div><label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Nova Senha</label><input type="password" id="newPwd" style="width: 100%;"></div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">Esta senha será usada para acessar o seu perfil. A senha universal (070522) continuará funcionando.</p>
+        </div>
+        <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('pwdModal')">Cancelar</button><button class="btn btn-success" onclick="savePassword()">Salvar</button></div>
+    </div>
   </div>
 
   <!-- MODAL DE DESPESA -->
@@ -648,6 +672,9 @@
     let db = null; try { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); } catch (err) {}
     
     let activeUser = null;
+    let pendingUser = null;
+    const MASTER_PWD = '070522';
+    
     let unsubscribeFirestore = null;
     let saveTimeout = null;
     
@@ -658,6 +685,36 @@
     
     let state = JSON.parse(JSON.stringify(INITIAL_SCHEMA));
     let currentSort = { col: 'descricao', dir: 'asc' };
+
+    // ====== SISTEMA DE LOGIN E USUÁRIOS ======
+    function promptPassword(userKey) {
+        pendingUser = userKey;
+        $('stepSelectUser').style.display = 'none';
+        $('stepPassword').style.display = 'flex';
+        $('pwdTitle').innerText = `Senha de ${userKey === 'otavio' ? 'Otávio' : 'Alessandra'}`;
+        $('loginPwd').value = '';
+        $('loginPwd').focus();
+    }
+
+    function cancelLogin() {
+        pendingUser = null;
+        $('stepPassword').style.display = 'none';
+        $('stepSelectUser').style.display = 'flex';
+    }
+
+    function doLogin() {
+        const input = $('loginPwd').value;
+        const savedPwd = localStorage.getItem('financas_pwd_' + pendingUser) || '';
+        
+        if (input === MASTER_PWD || (savedPwd && input === savedPwd)) {
+            selectUser(pendingUser);
+            $('stepPassword').style.display = 'none';
+            $('stepSelectUser').style.display = 'flex';
+        } else {
+            showCustomAlert("Acesso Negado", "A senha está incorreta!", "❌");
+            $('loginPwd').value = '';
+        }
+    }
 
     function selectUser(userKey) {
         activeUser = userKey;
@@ -673,11 +730,28 @@
 
     function switchUser() {
         activeUser = null;
+        pendingUser = null;
         $('appContainer').style.display = 'none';
         $('userSelectionOverlay').style.display = 'flex';
+        $('stepSelectUser').style.display = 'flex';
+        $('stepPassword').style.display = 'none';
         if(unsubscribeFirestore) { unsubscribeFirestore(); unsubscribeFirestore = null; }
     }
 
+    function openPwdModal() {
+        $('newPwd').value = '';
+        openModal('pwdModal');
+    }
+
+    function savePassword() {
+        const pwd = $('newPwd').value;
+        if(!pwd) { showCustomAlert('Aviso', 'Digite uma senha válida.', '⚠️'); return; }
+        localStorage.setItem('financas_pwd_' + activeUser, pwd);
+        closeModal('pwdModal');
+        showToast('Senha atualizada com sucesso!');
+    }
+
+    // ====== NÚCLEO DO SISTEMA ======
     function sanitizeData(raw) {
       const def = JSON.parse(JSON.stringify(INITIAL_SCHEMA));
       if (!raw || typeof raw !== 'object') return def;
@@ -702,7 +776,6 @@
 
     function loadLocalFallback() { try { const stored = localStorage.getItem('financas_cache_' + activeUser); if (stored) return sanitizeData(JSON.parse(stored)); } catch (e) {} return JSON.parse(JSON.stringify(INITIAL_SCHEMA)); }
 
-    let dialogCallback = null;
     function showCustomAlert(title, message, icon = 'ℹ️') { $('dialogTitle').innerHTML = `<span>${icon}</span> ${title}`; $('dialogMessage').innerText = message; $('dialogFooter').innerHTML = `<button type="button" class="btn btn-primary" onclick="closeCustomDialog()">OK</button>`; $('customDialogModal').classList.add('active'); }
     function showCustomConfirm(title, message, onConfirm, icon = '⚠️') { $('dialogTitle').innerHTML = `<span>${icon}</span> ${title}`; $('dialogMessage').innerHTML = message; dialogCallback = onConfirm; $('dialogFooter').innerHTML = `<button type="button" class="btn btn-secondary" onclick="closeCustomDialog()">Cancelar</button><button type="button" class="btn btn-danger" onclick="executeCustomConfirm()">Confirmar</button>`; $('customDialogModal').classList.add('active'); }
     function executeCustomConfirm() { const acaoSalva = dialogCallback; closeCustomDialog(); if (typeof acaoSalva === 'function') acaoSalva(); }
@@ -909,7 +982,15 @@
           incList.innerHTML = '';
           (data.incomes||[]).forEach((inc, idx) => {
             let dateStr = ''; if(inc.date) { const p = inc.date.split('-'); dateStr = `<small style="color:var(--text-muted); font-size:0.75rem;">(${p[2]}/${p[1]})</small> `; }
-            incList.innerHTML += `<div class="income-item"><span style="font-weight:600; font-size:0.85rem;">${dateStr}${inc.name}</span><div style="display:flex; align-items:center;"><strong style="color: var(--accent-green); margin-right: 0.5rem; font-size:0.9rem;">${fmt(inc.value)}</strong><button class="btn btn-secondary btn-icon btn-sm" onclick="openIncomeModal(${idx})">✏️</button>&nbsp;<button class="btn btn-danger btn-icon btn-sm" onclick="delIncome(${idx})">🗑️</button></div></div>`;
+            incList.innerHTML += `
+              <div class="income-item">
+                <span style="font-weight:600; font-size:0.85rem;">${dateStr}${inc.name}</span>
+                <div style="display:flex; align-items:center;">
+                  <strong style="color: var(--accent-green); margin-right: 0.5rem; font-size:0.9rem;">${fmt(inc.value)}</strong>
+                  <button class="btn btn-secondary btn-icon btn-sm" onclick="openIncomeModal(${idx})">✏️</button>&nbsp;
+                  <button class="btn btn-danger btn-icon btn-sm" onclick="delIncome(${idx})">🗑️</button>
+                </div>
+              </div>`;
           });
           $('incomeTotalFooter').innerText = fmt(totInc);
         }
@@ -925,7 +1006,14 @@
             catArray.forEach(item => {
               if (item.val > 0) { 
                   hasCats = true; const pct = sumCategorized > 0 ? (item.val / sumCategorized) * 100 : 0;
-                  catList.innerHTML += `<div class="cat-item"><div class="cat-header-line"><span><span class="cat-dot" style="background:${item.col};"></span>${item.name}</span><span><strong>${fmt(item.val)}</strong> <small style="color:var(--text-muted);">(${pct.toFixed(0)}%)</small></span></div><div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%; background:${item.col};"></div></div></div>`;
+                  catList.innerHTML += `
+                    <div class="cat-item">
+                      <div class="cat-header-line">
+                        <span><span class="cat-dot" style="background:${item.col};"></span>${item.name}</span>
+                        <span><strong>${fmt(item.val)}</strong> <small style="color:var(--text-muted);">(${pct.toFixed(0)}%)</small></span>
+                      </div>
+                      <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%; background:${item.col};"></div></div>
+                    </div>`;
               }
             });
             if (!hasCats) { catList.innerHTML = `<div style="text-align: center; padding: 1rem; color: var(--text-muted); font-size: 0.85rem;">Nenhum gasto neste mês.</div>`; }
@@ -972,7 +1060,23 @@
           const stClass = e.status === 'PAGO' ? 'status-pago' : e.status === 'GUARDADO' ? 'status-guardado' : e.status === 'NÃO APLICÁVEL' ? 'status-nao-aplicavel' : 'status-a-pagar';
           const isFuture = e.isFutureView; const isPast = !isFuture && e.dataDespesa && !e.dataDespesa.endsWith(currentSuffix); const rowClass = isFuture ? 'future-row' : '';
           let cInfo = ''; if (isFuture) { cInfo = `<span style="font-size: 0.7rem; color: var(--accent-blue); display:block; margin-top: 3px; font-weight: 700;">⏭️ Fatura ${e.originalMonthName}/${e.originalYear}</span>`; } else if (isPast) { const p = e.dataDespesa.split('/'); cInfo = `<span style="font-size: 0.7rem; color: var(--text-muted); display:block; margin-top: 3px; font-weight: 600;">🛒 Compra ${MONTHS[parseInt(p[1], 10)-1]}/${p[2]}</span>`; }
-          tbody.innerHTML += `<tr class="${rowClass}"><td><strong>${e.formaPgto || '-'}</strong></td><td><strong>${e.descricao}</strong> ${cInfo}</td><td><span class="cat-tag" style="background:${catConfig.color}20; color:${catConfig.color}; border:1px solid ${catConfig.color}40;"><span class="cat-dot" style="background:${catConfig.color};"></span>${e.categoria}</span></td><td><strong style="color: var(--accent-red);">${fmt(e.valor)}</strong></td><td><span style="color: var(--text-muted); font-size:0.8rem;">${e.dataDespesa || '-'}</span></td><td><span style="color: var(--text-muted); font-size:0.8rem; font-weight:600;">${e.vencimento || '-'}</span></td><td><span class="status-badge ${stClass}" onclick="toggleStatus('${e.id}')">${e.status}</span></td><td>${e.parcela ? `<span class="parcela-badge">${e.parcela}</span>` : '-'}</td><td><small style="color: var(--text-muted);">${e.obs || ''}</small></td><td style="text-align: right;"><button class="btn btn-secondary btn-icon btn-sm" onclick="openExpenseModal('${e.id}')">✏️</button>&nbsp;<button class="btn btn-secondary btn-icon btn-sm" onclick="duplicateExpense('${e.id}')">📑</button>&nbsp;<button class="btn btn-danger btn-icon btn-sm" onclick="delExpense('${e.id}')">🗑️</button></td></tr>`;
+          tbody.innerHTML += `
+            <tr class="${rowClass}">
+              <td><strong>${e.formaPgto || '-'}</strong></td>
+              <td><strong>${e.descricao}</strong> ${cInfo}</td>
+              <td><span class="cat-tag" style="background:${catConfig.color}20; color:${catConfig.color}; border:1px solid ${catConfig.color}40;"><span class="cat-dot" style="background:${catConfig.color};"></span>${e.categoria}</span></td>
+              <td><strong style="color: var(--accent-red);">${fmt(e.valor)}</strong></td>
+              <td><span style="color: var(--text-muted); font-size:0.8rem;">${e.dataDespesa || '-'}</span></td>
+              <td><span style="color: var(--text-muted); font-size:0.8rem; font-weight:600;">${e.vencimento || '-'}</span></td>
+              <td><span class="status-badge ${stClass}" onclick="toggleStatus('${e.id}')">${e.status}</span></td>
+              <td>${e.parcela ? `<span class="parcela-badge">${e.parcela}</span>` : '-'}</td>
+              <td><small style="color: var(--text-muted);">${e.obs || ''}</small></td>
+              <td style="text-align: right;">
+                <button class="btn btn-secondary btn-icon btn-sm" onclick="openExpenseModal('${e.id}')">✏️</button>&nbsp;
+                <button class="btn btn-secondary btn-icon btn-sm" onclick="duplicateExpense('${e.id}')">📑</button>&nbsp;
+                <button class="btn btn-danger btn-icon btn-sm" onclick="delExpense('${e.id}')">🗑️</button>
+              </td>
+            </tr>`;
         });
       }
       $('tableCount').innerText = `${list.length} itens`; $('filteredTotalVal').innerText = fmt(filteredSum);

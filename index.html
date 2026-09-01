@@ -29,7 +29,8 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
     body { background-color: var(--bg-primary); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
     header { background-color: var(--bg-secondary); border-bottom: 1px solid var(--border-color); padding: 0.75rem 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; position: sticky; top: 0; z-index: 40; }
-    .header-user-badge { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; background: var(--bg-tertiary); padding: 0.25rem 0.65rem; border-radius: 9999px; color: var(--text-muted); }
+    .header-user-badge { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 700; background: var(--bg-tertiary); padding: 0.35rem 0.75rem; border-radius: 9999px; color: var(--text-main); cursor: pointer; border: 1px solid var(--border-color); transition: all 0.2s; }
+    .header-user-badge:hover { background: var(--accent-blue-bg); border-color: var(--accent-blue); }
     .sync-indicator { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-green); display: inline-block; }
     .sync-indicator.syncing { background: var(--accent-yellow); animation: pulse 1s infinite; }
     @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
@@ -131,6 +132,12 @@
     
     .flex-between { display: flex; justify-content: space-between; align-items: center; }
     
+    #userSelectionOverlay { position: fixed; inset: 0; background: var(--bg-primary); z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.5rem; }
+    .user-btn { padding: 1.5rem 3rem; font-size: 1.5rem; border-radius: 1rem; border: none; cursor: pointer; font-weight: 700; transition: transform 0.2s; box-shadow: var(--card-shadow); display: flex; align-items: center; gap: 0.75rem; }
+    .user-btn:hover { transform: scale(1.05); }
+    .btn-otavio { background: var(--accent-blue); color: #fff; }
+    .btn-alessandra { background: var(--accent-purple); color: #fff; }
+
     @media print { 
       header, .nav-bar, .table-toolbar { display: none !important; } 
       .btn, button { display: none !important; } 
@@ -146,11 +153,25 @@
 </head>
 <body>
 
-  <div id="appContainer">
+  <!-- TELA DE SELEÇÃO DE USUÁRIO -->
+  <div id="userSelectionOverlay">
+      <h2 style="font-size: 1.8rem; text-align: center; color: var(--text-main);">Quem está acessando?</h2>
+      <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center;">
+          <button class="user-btn btn-otavio" onclick="selectUser('otavio')">👨 Otávio</button>
+          <button class="user-btn btn-alessandra" onclick="selectUser('alessandra')">👩 Alessandra</button>
+      </div>
+  </div>
+
+  <div id="appContainer" style="display: none; flex-direction: column; min-height: 100vh;">
     <header>
       <div style="display: flex; align-items: center; gap: 0.75rem;">
         <h1 style="font-size: 1.15rem; font-weight: 700;">Controle de Gastos <span style="font-size: 0.75rem; padding: 0.2rem 0.5rem; background: rgba(56,189,248,0.15); color: var(--accent-blue); border-radius: 9999px;" id="headerYear">2026</span></h1>
-        <div class="header-user-badge"><span class="sync-indicator" id="syncDot" title="Sincronizado"></span>Nuvem ☁️</div>
+        
+        <!-- BOTÃO DE USUÁRIO AGORA É CLICÁVEL -->
+        <div class="header-user-badge" onclick="switchUser()" title="Trocar de Usuário">
+          <span class="sync-indicator" id="syncDot"></span>
+          <span id="userEmailBadge">👤 Usuário</span> &nbsp;🔄
+        </div>
       </div>
       <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
         <button class="btn btn-secondary btn-sm" onclick="toggleTheme()">🌓 Tema</button>
@@ -626,10 +647,36 @@
     const firebaseConfig = { apiKey: "AIzaSyBEdIIZlNHr9drPwu5RqY5e2muGOxMiKKg", authDomain: "controle-dindin-5ba40.firebaseapp.com", projectId: "controle-dindin-5ba40", storageBucket: "controle-dindin-5ba40.firebasestorage.app", messagingSenderId: "825601485885", appId: "1:825601485885:web:402b83722306025b9e0e54" };
     let db = null; try { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); } catch (err) {}
     
+    let activeUser = null;
+    let unsubscribeFirestore = null;
+    let saveTimeout = null;
+    
     const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
     function createEmptyYear() { const y = {}; MONTHS.forEach(m => { y[m] = { incomes: [], expenses: [] }; }); return y; }
     
     const INITIAL_SCHEMA = { years: { "2026": createEmptyYear() }, currentYear: "2026", currentMonth: "Janeiro", categories: [ { name: "SERVIÇOS", color: "#0ea5e9" }, { name: "EDUCAÇÃO", color: "#8b5cf6" }, { name: "BELEZA", color: "#ec4899" }, { name: "INVESTIMENTO", color: "#10b981" }, { name: "ALIMENTAÇÃO", color: "#f59e0b" }, { name: "IMPREVISTOS", color: "#ef4444" }, { name: "LAZER", color: "#6366f1" }, { name: "VARIÁVEL", color: "#14b8a6" }, { name: "GASOLINA", color: "#f97316" } ], paymentMethods: ["DINHEIRO", "PIX"], cards: [{ id: "c_banri30", name: "Banri30", type: "rolling", rollingDays: 30, limit: 0 }] };
+    
+    let state = JSON.parse(JSON.stringify(INITIAL_SCHEMA));
+    let currentSort = { col: 'descricao', dir: 'asc' };
+
+    function selectUser(userKey) {
+        activeUser = userKey;
+        $('userSelectionOverlay').style.display = 'none';
+        $('appContainer').style.display = 'flex';
+        $('userEmailBadge').innerText = userKey === 'otavio' ? '👨 Otávio' : '👩 Alessandra';
+        
+        if(unsubscribeFirestore) { unsubscribeFirestore(); unsubscribeFirestore = null; }
+        state = loadLocalFallback();
+        renderYears(); renderTabs(); fillSelects(); render();
+        startRealtimeSync();
+    }
+
+    function switchUser() {
+        activeUser = null;
+        $('appContainer').style.display = 'none';
+        $('userSelectionOverlay').style.display = 'flex';
+        if(unsubscribeFirestore) { unsubscribeFirestore(); unsubscribeFirestore = null; }
+    }
 
     function sanitizeData(raw) {
       const def = JSON.parse(JSON.stringify(INITIAL_SCHEMA));
@@ -653,8 +700,7 @@
       return { years: cleanYears, currentYear: curY, currentMonth: curM, categories: Array.isArray(raw.categories) && raw.categories.length > 0 ? raw.categories : def.categories, paymentMethods: Array.isArray(raw.paymentMethods) ? raw.paymentMethods : def.paymentMethods, cards: Array.isArray(raw.cards) ? raw.cards : def.cards };
     }
 
-    let state = loadLocalFallback(); let currentSort = { col: 'descricao', dir: 'asc' };
-    function loadLocalFallback() { try { const stored = localStorage.getItem('financas_app_cache'); if (stored) return sanitizeData(JSON.parse(stored)); } catch (e) {} return JSON.parse(JSON.stringify(INITIAL_SCHEMA)); }
+    function loadLocalFallback() { try { const stored = localStorage.getItem('financas_cache_' + activeUser); if (stored) return sanitizeData(JSON.parse(stored)); } catch (e) {} return JSON.parse(JSON.stringify(INITIAL_SCHEMA)); }
 
     let dialogCallback = null;
     function showCustomAlert(title, message, icon = 'ℹ️') { $('dialogTitle').innerHTML = `<span>${icon}</span> ${title}`; $('dialogMessage').innerText = message; $('dialogFooter').innerHTML = `<button type="button" class="btn btn-primary" onclick="closeCustomDialog()">OK</button>`; $('customDialogModal').classList.add('active'); }
@@ -662,7 +708,7 @@
     function executeCustomConfirm() { const acaoSalva = dialogCallback; closeCustomDialog(); if (typeof acaoSalva === 'function') acaoSalva(); }
     function closeCustomDialog() { $('customDialogModal').classList.remove('active'); dialogCallback = null; }
 
-    function confirmResetCache() { showCustomConfirm("Limpar Tudo", "Deseja zerar o sistema?", () => { localStorage.removeItem('financas_app_cache'); state = JSON.parse(JSON.stringify(INITIAL_SCHEMA)); syncToCloud(true); renderYears(); renderTabs(); fillSelects(); render(); showToast("Limpo!"); }, '🧹'); }
+    function confirmResetCache() { showCustomConfirm("Limpar Tudo", "Deseja zerar o sistema do usuário atual?", () => { localStorage.removeItem('financas_cache_' + activeUser); state = JSON.parse(JSON.stringify(INITIAL_SCHEMA)); syncToCloud(true); renderYears(); renderTabs(); fillSelects(); render(); showToast("Limpo!"); }, '🧹'); }
     function deleteCurrentYear() { const y = state.currentYear; showCustomConfirm("Excluir Ano", `Deseja apagar TUDO de ${y}?`, () => { delete state.years[y]; const rem = Object.keys(state.years); if (rem.length === 0) { state.years[(new Date()).getFullYear().toString()] = createEmptyYear(); state.currentYear = (new Date()).getFullYear().toString(); } else { state.currentYear = rem.sort((a,b)=>parseInt(b)-parseInt(a))[0]; } syncToCloud(true); renderYears(); renderTabs(); render(); showToast(`Ano ${y} apagado!`); }, '🗑️'); }
 
     function fmt(val) { return (Number(val) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
@@ -670,15 +716,31 @@
     function setSyncStatus(isSyncing) { const dot = $('syncDot'); if (dot) { if (isSyncing) dot.classList.add('syncing'); else dot.classList.remove('syncing'); } }
 
     function startRealtimeSync() {
-      if (!db) return; setSyncStatus(true); const docRef = db.collection("financas").doc("dados_gerais");
-      unsubscribeFirestore = docRef.onSnapshot(doc => { setSyncStatus(false); if (doc.exists) { const remoteData = doc.data(); if (remoteData && remoteData.years) { state = sanitizeData(remoteData); localStorage.setItem('financas_app_cache', JSON.stringify(state)); renderYears(); renderTabs(); fillSelects(); render(); } } else { docRef.set(state); } }, err => { setSyncStatus(false); });
+      if (!db || !activeUser) return; 
+      setSyncStatus(true); 
+      const docRef = db.collection("financas").doc("dados_" + activeUser);
+      unsubscribeFirestore = docRef.onSnapshot(doc => { 
+          setSyncStatus(false); 
+          if (doc.exists) { 
+              const remoteData = doc.data(); 
+              if (remoteData && remoteData.years) { 
+                  state = sanitizeData(remoteData); 
+                  localStorage.setItem('financas_cache_' + activeUser, JSON.stringify(state)); 
+                  renderYears(); renderTabs(); fillSelects(); render(); 
+              } 
+          } else { 
+              docRef.set(state); 
+          } 
+      }, err => { setSyncStatus(false); });
     }
 
-    let saveTimeout = null;
     function syncToCloud(immediate = false) {
-      localStorage.setItem('financas_app_cache', JSON.stringify(state)); if (!db) return; setSyncStatus(true); clearTimeout(saveTimeout);
-      if (immediate) { db.collection("financas").doc("dados_gerais").set(state).then(() => setSyncStatus(false)).catch(e => setSyncStatus(false)); } 
-      else { saveTimeout = setTimeout(() => { db.collection("financas").doc("dados_gerais").set(state).then(() => setSyncStatus(false)).catch(e => setSyncStatus(false)); }, 500); }
+      if(!activeUser) return;
+      localStorage.setItem('financas_cache_' + activeUser, JSON.stringify(state)); 
+      if (!db) return; 
+      setSyncStatus(true); clearTimeout(saveTimeout);
+      if (immediate) { db.collection("financas").doc("dados_" + activeUser).set(state).then(() => setSyncStatus(false)).catch(e => setSyncStatus(false)); } 
+      else { saveTimeout = setTimeout(() => { db.collection("financas").doc("dados_" + activeUser).set(state).then(() => setSyncStatus(false)).catch(e => setSyncStatus(false)); }, 500); }
     }
 
     function toggleTheme() { const html = document.documentElement; html.className = html.classList.contains('dark') ? 'light' : 'dark'; }
@@ -754,7 +816,6 @@
         const wrap = $('limitsList'); if(!wrap) return; wrap.innerHTML = ''; let hasCards = false;
         const viewedYear = parseInt(state.currentYear, 10); const viewedMonthIdx = MONTHS.indexOf(state.currentMonth);
         const today = new Date(); today.setHours(23, 59, 59, 999);
-        
         state.cards.forEach(card => {
             let limit = Number(card.limit) || 0; if(limit === 0) return; hasCards = true; let used = 0;
             for (let y in state.years) {
@@ -776,7 +837,7 @@
             let color = pct > 85 ? 'var(--accent-red)' : (pct > 70 ? 'var(--accent-yellow)' : 'var(--accent-green)');
             wrap.innerHTML += `<div style="margin-bottom: 12px;"><div class="flex-between" style="font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;"><span>💳 ${card.name}</span><span style="color: ${color};">Livre: ${fmt(avail)}</span></div><div style="width: 100%; height: 6px; background: var(--bg-tertiary); border-radius: 9999px; overflow: hidden;"><div style="height: 100%; width: ${pct}%; background: ${color}; transition: width 0.3s;"></div></div><div style="font-size: 0.7rem; color: var(--text-muted); text-align: right; margin-top: 2px;">Usado: ${fmt(used)} de ${fmt(limit)}</div></div>`;
         });
-        if(!hasCards) wrap.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center;">Configure o limite nos cartões.</div>';
+        if(!hasCards) wrap.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center;">Configure o limite nos cartões para acompanhar aqui.</div>';
     }
 
     function render() {
@@ -1052,7 +1113,7 @@
             processCashback(desc, val, 0); state.currentYear = targetStartYearStr; state.currentMonth = targetStartMonthName; showToast('Salvo!');
           }
         }
-        closeModal('expenseModal'); try { localStorage.setItem('financas_app_cache', JSON.stringify(state)); } catch (e) {} try { renderYears(); renderTabs(); fillSelects(); render(); } catch (e) {} try { syncToCloud(); } catch (e) {}
+        closeModal('expenseModal'); try { localStorage.setItem('financas_cache_' + activeUser, JSON.stringify(state)); } catch (e) {} try { renderYears(); renderTabs(); fillSelects(); render(); } catch (e) {} try { syncToCloud(); } catch (e) {}
       } catch (err) { showCustomAlert("Erro ao Salvar", "Ocorreu um erro: " + err, "❌"); }
     }
 
@@ -1145,7 +1206,7 @@
       $('annualTableFoot').innerHTML = `<tr><td>TOTAL ANUAL</td><td style="color: var(--accent-green);">${fmt(totI)}</td><td style="color: var(--accent-red);">${fmt(totE)}</td><td style="color: ${annBal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">${fmt(annBal)}</td><td>-</td><td>${fmt(totP)}</td><td>${fmt(totPend)}</td><td></td></tr>`;
     }
 
-    function exportDataJSON() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2)); const a = document.createElement('a'); a.href = dataStr; a.download = `backup_financas_${state.currentYear}.json`; a.click(); showToast('Backup gerado!'); }
+    function exportDataJSON() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2)); const a = document.createElement('a'); a.href = dataStr; a.download = `backup_financas_${activeUser}_${state.currentYear}.json`; a.click(); showToast('Backup gerado!'); }
     
     function importDataJSON(e) {
       const f = e.target.files[0]; if (!f) return; const r = new FileReader();
@@ -1160,9 +1221,8 @@
       }; r.readAsText(f);
     }
 
-    function exportCSV() { const d = getMonthData(); let csv = "Forma Pgto;Descricao;Categoria;Valor;Data Compra;Vencimento;Status;Parcela;Obs\n"; (d.expenses||[]).forEach(e => { csv += `"${e.formaPgto || ''}";"${e.descricao || ''}";"${e.categoria || ''}";"${e.valor || 0}";"${e.dataDespesa || ''}";"${e.vencimento || ''}";"${e.status || ''}";"${e.parcela || ''}";"${e.obs || ''}"\n`; }); const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `despesas_${state.currentYear}_${state.currentMonth}.csv`; a.click(); showToast('CSV exportado!'); }
+    function exportCSV() { const d = getMonthData(); let csv = "Forma Pgto;Descricao;Categoria;Valor;Data Compra;Vencimento;Status;Parcela;Obs\n"; (d.expenses||[]).forEach(e => { csv += `"${e.formaPgto || ''}";"${e.descricao || ''}";"${e.categoria || ''}";"${e.valor || 0}";"${e.dataDespesa || ''}";"${e.vencimento || ''}";"${e.status || ''}";"${e.parcela || ''}";"${e.obs || ''}"\n`; }); const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `despesas_${activeUser}_${state.currentYear}_${state.currentMonth}.csv`; a.click(); showToast('CSV exportado!'); }
 
-    window.addEventListener('DOMContentLoaded', () => { startRealtimeSync(); renderYears(); renderTabs(); fillSelects(); render(); });
   </script>
 </body>
 </html>

@@ -170,7 +170,7 @@
               <button class="btn btn-secondary" onclick="cancelLogin()">Voltar</button>
               <button class="btn btn-primary" onclick="doLogin()">Entrar</button>
           </div>
-          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 10px;">Dica: Senha universal ou a senha pessoal definida.</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 10px;">🔒 Área restrita. Insira sua senha de acesso.</div>
       </div>
   </div>
 
@@ -431,7 +431,7 @@
         <div class="modal-header"><h3>Configurar Senha Pessoal</h3><button class="btn btn-secondary btn-icon" onclick="closeModal('pwdModal')">✕</button></div>
         <div class="modal-body">
             <div><label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Nova Senha</label><input type="password" id="newPwd" style="width: 100%;"></div>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">Esta senha será usada para acessar o seu perfil. A senha universal (070522) continuará funcionando.</p>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">Esta senha será usada para acessar o seu perfil de forma segura neste dispositivo.</p>
         </div>
         <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('pwdModal')">Cancelar</button><button class="btn btn-success" onclick="savePassword()">Salvar</button></div>
     </div>
@@ -910,7 +910,7 @@
             let color = pct > 85 ? 'var(--accent-red)' : (pct > 70 ? 'var(--accent-yellow)' : 'var(--accent-green)');
             wrap.innerHTML += `<div style="margin-bottom: 12px;"><div class="flex-between" style="font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;"><span>💳 ${card.name}</span><span style="color: ${color};">Livre: ${fmt(avail)}</span></div><div style="width: 100%; height: 6px; background: var(--bg-tertiary); border-radius: 9999px; overflow: hidden;"><div style="height: 100%; width: ${pct}%; background: ${color}; transition: width 0.3s;"></div></div><div style="font-size: 0.7rem; color: var(--text-muted); text-align: right; margin-top: 2px;">Usado: ${fmt(used)} de ${fmt(limit)}</div></div>`;
         });
-        if(!hasCards) wrap.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center;">Configure o limite nos cartões para acompanhar aqui.</div>';
+        if(!hasCards) wrap.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center;">Configure o limite nos cartões.</div>';
     }
 
     function render() {

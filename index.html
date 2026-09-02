@@ -252,11 +252,11 @@
           </div>
         </section>
 
-        <!-- POTES DE PLANEJAMENTO EM CASCATA -->
+        <!-- POTES DE PLANEJAMENTO EM CASCATA DINÂMICOS -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
             <div class="plan-box">
               <h4 style="color: var(--accent-blue); margin-bottom: 8px;" class="flex-between">
-                <span>🗓️ Ciclo 1 (Salário)</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Até dia <span id="lblDate1"></span></span>
+                <span id="nameC1">🗓️ Ciclo 1</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Até dia <span id="lblDate1"></span></span>
               </h4>
               <div class="flex-between" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 2px;">
                 <span>Entrada: <strong id="planInc1" style="color: var(--accent-green);">R$ 0,00</strong></span>
@@ -268,7 +268,7 @@
             
             <div class="plan-box">
               <h4 style="color: var(--accent-yellow); margin-bottom: 8px;" class="flex-between">
-                <span>🗓️ Ciclo 2 (Adiantam.)</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Do <span id="lblDate2A"></span> ao <span id="lblDate2B"></span></span>
+                <span id="nameC2">🗓️ Ciclo 2</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Do <span id="lblDate2A"></span> ao <span id="lblDate2B"></span></span>
               </h4>
               <div class="flex-between" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 2px;">
                 <span>Entrada: <strong id="planInc2" style="color: var(--accent-green);">R$ 0,00</strong></span>
@@ -280,7 +280,7 @@
             
             <div class="plan-box">
               <h4 style="color: var(--accent-purple); margin-bottom: 8px;" class="flex-between">
-                <span>🗓️ Ciclo 3 (Flash/Ext)</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Dia <span id="lblDate3"></span> em diante</span>
+                <span id="nameC3">🗓️ Ciclo 3</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Dia <span id="lblDate3"></span> em diante</span>
               </h4>
               <div class="flex-between" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 2px;">
                 <span>Entrada: <strong id="planInc3" style="color: var(--accent-green);">R$ 0,00</strong></span>
@@ -819,14 +819,30 @@
     function toggleTheme() { const html = document.documentElement; html.className = html.classList.contains('dark') ? 'light' : 'dark'; }
 
     function getCycleDates(year, monthIdx) { 
-        let busDays = 0; let curDay = 1; let dSal;
-        while (busDays < 5) { dSal = new Date(year, monthIdx, curDay); if (dSal.getDay() !== 0) busDays++; if (busDays < 5) curDay++; }
-        if (dSal.getDay() === 6) dSal.setDate(dSal.getDate() - 1); 
-        let dAdi = new Date(year, monthIdx, 20);
-        if (dAdi.getDay() === 6) dAdi.setDate(19); else if (dAdi.getDay() === 0) dAdi.setDate(18);
-        let lastDay = new Date(year, monthIdx + 1, 0); let dExt = new Date(lastDay);
-        while (dExt.getDay() !== 4) dExt.setDate(dExt.getDate() - 1); 
-        return { sal: dSal.getDate(), adi: dAdi.getDate(), ext: dExt.getDate(), salDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(dSal.getDate()).padStart(2,'0')}`, adiDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(dAdi.getDate()).padStart(2,'0')}`, extDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(dExt.getDate()).padStart(2,'0')}` };
+        if (activeUser === 'alessandra') {
+            let d1 = new Date(year, monthIdx, 1);
+            while (d1.getDay() !== 2) d1.setDate(d1.getDate() + 1); 
+            
+            let d3 = new Date(year, monthIdx + 1, 0);
+            if (d3.getDay() === 0) d3.setDate(d3.getDate() - 2); 
+            else if (d3.getDay() === 6) d3.setDate(d3.getDate() - 1); 
+            
+            let d2 = new Date(year, monthIdx, 15); 
+            
+            return { c1: d1.getDate(), c2: d2.getDate(), c3: d3.getDate(), lbl1: "Ciclo 1 (1ª Terça)", lbl2: "Ciclo 2 (Quinzena)", lbl3: "Ciclo 3 (Salário)", salDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(d3.getDate()).padStart(2,'0')}`, adiDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(d1.getDate()).padStart(2,'0')}`, extDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(d2.getDate()).padStart(2,'0')}` };
+        } else {
+            let busDays = 0; let curDay = 1; let dSal;
+            while (busDays < 5) { dSal = new Date(year, monthIdx, curDay); if (dSal.getDay() !== 0) busDays++; if (busDays < 5) curDay++; }
+            if (dSal.getDay() === 6) dSal.setDate(dSal.getDate() - 1); 
+            
+            let dAdi = new Date(year, monthIdx, 20);
+            if (dAdi.getDay() === 6) dAdi.setDate(19); else if (dAdi.getDay() === 0) dAdi.setDate(18);
+            
+            let lastDay = new Date(year, monthIdx + 1, 0); let dExt = new Date(lastDay);
+            while (dExt.getDay() !== 4) dExt.setDate(dExt.getDate() - 1); 
+            
+            return { c1: dSal.getDate(), c2: dAdi.getDate(), c3: dExt.getDate(), lbl1: "Ciclo 1 (Salário)", lbl2: "Ciclo 2 (Adiantam.)", lbl3: "Ciclo 3 (Flash/Ext)", salDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(dSal.getDate()).padStart(2,'0')}`, adiDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(dAdi.getDate()).padStart(2,'0')}`, extDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(dExt.getDate()).padStart(2,'0')}` };
+        }
     }
 
     function updateRealBalance() {
@@ -910,7 +926,7 @@
             let color = pct > 85 ? 'var(--accent-red)' : (pct > 70 ? 'var(--accent-yellow)' : 'var(--accent-green)');
             wrap.innerHTML += `<div style="margin-bottom: 12px;"><div class="flex-between" style="font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;"><span>💳 ${card.name}</span><span style="color: ${color};">Livre: ${fmt(avail)}</span></div><div style="width: 100%; height: 6px; background: var(--bg-tertiary); border-radius: 9999px; overflow: hidden;"><div style="height: 100%; width: ${pct}%; background: ${color}; transition: width 0.3s;"></div></div><div style="font-size: 0.7rem; color: var(--text-muted); text-align: right; margin-top: 2px;">Usado: ${fmt(used)} de ${fmt(limit)}</div></div>`;
         });
-        if(!hasCards) wrap.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center;">Configure o limite nos cartões.</div>';
+        if(!hasCards) wrap.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center;">Configure o limite nos cartões para acompanhar aqui.</div>';
     }
 
     function render() {
@@ -955,25 +971,30 @@
         const dates = getCycleDates(parseInt(state.currentYear), MONTHS.indexOf(state.currentMonth));
         let incC1 = 0, expC1 = 0, incC2 = 0, expC2 = 0, incC3 = 0, expC3 = 0;
 
+        let limit1 = dates.c2;
+        let limit2 = dates.c3;
+
         (data.incomes||[]).forEach(inc => {
-            let day = 1; if (inc.date && inc.date.includes('-')) { day = parseInt(inc.date.split('-')[2], 10); } else { let n = (inc.name || '').toLowerCase(); if (n.includes('adiantamento')) day = dates.adi; else if (n.includes('ppr') || n.includes('13º') || n.includes('férias') || n.includes('extra') || n.includes('flash')) day = dates.ext; else day = dates.sal; }
-            if (day < dates.adi) incC1 += Number(inc.value); else if (day >= dates.adi && day < dates.ext) incC2 += Number(inc.value); else incC3 += Number(inc.value);
+            let day = 1; if (inc.date && inc.date.includes('-')) { day = parseInt(inc.date.split('-')[2], 10); } else { let n = (inc.name || '').toLowerCase(); if (n.includes('adiantamento')) day = dates.c2; else if (n.includes('ppr') || n.includes('13º') || n.includes('férias') || n.includes('extra') || n.includes('flash')) day = dates.c3; else day = dates.c1; }
+            if (day < limit1) incC1 += Number(inc.value); else if (day >= limit1 && day < limit2) incC2 += Number(inc.value); else incC3 += Number(inc.value);
         });
         (data.expenses||[]).forEach(exp => {
-           if (exp.vencimento && exp.vencimento.includes('/')) { let d = parseInt(exp.vencimento.split('/')[0], 10); if (d < dates.adi) expC1 += Number(exp.valor); else if (d < dates.ext) expC2 += Number(exp.valor); else expC3 += Number(exp.valor); }
+           if (exp.vencimento && exp.vencimento.includes('/')) { let d = parseInt(exp.vencimento.split('/')[0], 10); if (d < limit1) expC1 += Number(exp.valor); else if (d >= limit1 && d < limit2) expC2 += Number(exp.valor); else expC3 += Number(exp.valor); }
         });
 
         if($('lblDate1')) {
-          $('lblDate1').innerText = String(dates.adi - 1).padStart(2, '0'); $('planInc1').innerText = fmt(incC1); $('planExp1').innerText = fmt(expC1); 
+          $('nameC1').innerText = `🗓️ ${dates.lbl1}`; $('nameC2').innerText = `🗓️ ${dates.lbl2}`; $('nameC3').innerText = `🗓️ ${dates.lbl3}`;
+          
+          $('lblDate1').innerText = String(limit1 - 1).padStart(2, '0'); $('planInc1').innerText = fmt(incC1); $('planExp1').innerText = fmt(expC1); 
           $('planAnt1').innerHTML = saldoAnterior !== 0 ? `+ Saldo Anterior: <strong style="color:${saldoAnterior > 0 ? 'var(--accent-blue)' : 'var(--accent-red)'}">${fmt(saldoAnterior)}</strong>` : '';
           const bC1 = saldoAnterior + incC1 - expC1; $('planBal1').innerText = fmt(bC1); $('planBal1').style.color = bC1 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
           
-          $('lblDate2A').innerText = String(dates.adi).padStart(2, '0'); $('lblDate2B').innerText = String(dates.ext - 1).padStart(2, '0'); $('planInc2').innerText = fmt(incC2); $('planExp2').innerText = fmt(expC2); 
-          $('planAnt2').innerHTML = `+ Sobra do Ciclo 1: <strong style="color:${bC1 >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)'}">${fmt(bC1)}</strong>`;
+          $('lblDate2A').innerText = String(limit1).padStart(2, '0'); $('lblDate2B').innerText = String(limit2 - 1).padStart(2, '0'); $('planInc2').innerText = fmt(incC2); $('planExp2').innerText = fmt(expC2); 
+          $('planAnt2').innerHTML = `+ Sobra: <strong style="color:${bC1 >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)'}">${fmt(bC1)}</strong>`;
           const bC2 = bC1 + incC2 - expC2; $('planBal2').innerText = fmt(bC2); $('planBal2').style.color = bC2 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
           
-          $('lblDate3').innerText = String(dates.ext).padStart(2, '0'); $('planInc3').innerText = fmt(incC3); $('planExp3').innerText = fmt(expC3); 
-          $('planAnt3').innerHTML = `+ Sobra do Ciclo 2: <strong style="color:${bC2 >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)'}">${fmt(bC2)}</strong>`;
+          $('lblDate3').innerText = String(limit2).padStart(2, '0'); $('planInc3').innerText = fmt(incC3); $('planExp3').innerText = fmt(expC3); 
+          $('planAnt3').innerHTML = `+ Sobra: <strong style="color:${bC2 >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)'}">${fmt(bC2)}</strong>`;
           const bC3 = bC2 + incC3 - expC3; $('planBal3').innerText = fmt(bC3); $('planBal3').style.color = bC3 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
         }
 

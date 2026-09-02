@@ -673,10 +673,10 @@
     
     let activeUser = null;
     let pendingUser = null;
-    const MASTER_PWD = '070522';
     
     let unsubscribeFirestore = null;
     let saveTimeout = null;
+    let isDataLoaded = false;
     
     const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
     function createEmptyYear() { const y = {}; MONTHS.forEach(m => { y[m] = { incomes: [], expenses: [] }; }); return y; }
@@ -686,7 +686,6 @@
     let state = JSON.parse(JSON.stringify(INITIAL_SCHEMA));
     let currentSort = { col: 'descricao', dir: 'asc' };
 
-    // ====== SISTEMA DE LOGIN E USUÁRIOS ======
     function promptPassword(userKey) {
         pendingUser = userKey;
         $('stepSelectUser').style.display = 'none';
@@ -704,9 +703,10 @@
 
     function doLogin() {
         const input = $('loginPwd').value;
-        const savedPwd = localStorage.getItem('financas_pwd_' + pendingUser) || '';
+        const defaultPwd = pendingUser === 'otavio' ? '2005' : '1981';
+        const savedPwd = localStorage.getItem('financas_pwd_' + pendingUser) || defaultPwd;
         
-        if (input === MASTER_PWD || (savedPwd && input === savedPwd)) {
+        if (input === savedPwd) {
             selectUser(pendingUser);
             $('stepPassword').style.display = 'none';
             $('stepSelectUser').style.display = 'flex';
@@ -718,6 +718,7 @@
 
     function selectUser(userKey) {
         activeUser = userKey;
+        isDataLoaded = false;
         $('userSelectionOverlay').style.display = 'none';
         $('appContainer').style.display = 'flex';
         $('userEmailBadge').innerText = userKey === 'otavio' ? '👨 Otávio' : '👩 Alessandra';
@@ -731,6 +732,7 @@
     function switchUser() {
         activeUser = null;
         pendingUser = null;
+        isDataLoaded = false;
         $('appContainer').style.display = 'none';
         $('userSelectionOverlay').style.display = 'flex';
         $('stepSelectUser').style.display = 'flex';
@@ -751,7 +753,6 @@
         showToast('Senha atualizada com sucesso!');
     }
 
-    // ====== NÚCLEO DO SISTEMA ======
     function sanitizeData(raw) {
       const def = JSON.parse(JSON.stringify(INITIAL_SCHEMA));
       if (!raw || typeof raw !== 'object') return def;
@@ -794,6 +795,7 @@
       const docRef = db.collection("financas").doc("dados_" + activeUser);
       unsubscribeFirestore = docRef.onSnapshot(doc => { 
           setSyncStatus(false); 
+          isDataLoaded = true;
           if (doc.exists) { 
               const remoteData = doc.data(); 
               if (remoteData && remoteData.years) { 
@@ -810,7 +812,7 @@
     function syncToCloud(immediate = false) {
       if(!activeUser) return;
       localStorage.setItem('financas_cache_' + activeUser, JSON.stringify(state)); 
-      if (!db) return; 
+      if (!db || !isDataLoaded) return; 
       setSyncStatus(true); clearTimeout(saveTimeout);
       if (immediate) { db.collection("financas").doc("dados_" + activeUser).set(state).then(() => setSyncStatus(false)).catch(e => setSyncStatus(false)); } 
       else { saveTimeout = setTimeout(() => { db.collection("financas").doc("dados_" + activeUser).set(state).then(() => setSyncStatus(false)).catch(e => setSyncStatus(false)); }, 500); }
@@ -926,7 +928,7 @@
             let color = pct > 85 ? 'var(--accent-red)' : (pct > 70 ? 'var(--accent-yellow)' : 'var(--accent-green)');
             wrap.innerHTML += `<div style="margin-bottom: 12px;"><div class="flex-between" style="font-size: 0.8rem; font-weight: 600; margin-bottom: 4px;"><span>💳 ${card.name}</span><span style="color: ${color};">Livre: ${fmt(avail)}</span></div><div style="width: 100%; height: 6px; background: var(--bg-tertiary); border-radius: 9999px; overflow: hidden;"><div style="height: 100%; width: ${pct}%; background: ${color}; transition: width 0.3s;"></div></div><div style="font-size: 0.7rem; color: var(--text-muted); text-align: right; margin-top: 2px;">Usado: ${fmt(used)} de ${fmt(limit)}</div></div>`;
         });
-        if(!hasCards) wrap.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center;">Configure o limite nos cartões para acompanhar aqui.</div>';
+        if(!hasCards) wrap.innerHTML = '<div style="font-size:0.8rem; color:var(--text-muted); text-align:center;">Configure o limite nos cartões.</div>';
     }
 
     function render() {
@@ -1331,7 +1333,7 @@
       $('annualTableFoot').innerHTML = `<tr><td>TOTAL ANUAL</td><td style="color: var(--accent-green);">${fmt(totI)}</td><td style="color: var(--accent-red);">${fmt(totE)}</td><td style="color: ${annBal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">${fmt(annBal)}</td><td>-</td><td>${fmt(totP)}</td><td>${fmt(totPend)}</td><td></td></tr>`;
     }
 
-    function exportDataJSON() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2)); const a = document.createElement('a'); a.href = dataStr; a.download = `backup_financas_${activeUser}_${state.currentYear}.json`; a.click(); showToast('Backup gerado!'); }
+    function exportDataJSON() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2)); const a = document.createElement('a'); a.href = dataStr; a.download = `backup_financas_${activeUser}_completo.json`; a.click(); showToast('Backup gerado!'); }
     
     function importDataJSON(e) {
       const f = e.target.files[0]; if (!f) return; const r = new FileReader();
@@ -1339,7 +1341,12 @@
         try {
           const imported = JSON.parse(ev.target.result);
           if (Array.isArray(imported)) { showCustomAlert("Aviso", "Backup antigo incompatível.", "⚠️"); }
-          else if (imported && imported.years) { state = sanitizeData(imported); renderYears(); renderTabs(); fillSelects(); render(); syncToCloud(true); showToast('Restaurado!'); }
+          else if (imported && imported.years) { 
+              showCustomConfirm("Restaurar Backup?", "Isso irá substituir todos os dados da nuvem por este arquivo. Deseja continuar?", () => {
+                  localStorage.setItem('financas_backup_seguranca_' + activeUser, JSON.stringify(state)); 
+                  state = sanitizeData(imported); renderYears(); renderTabs(); fillSelects(); render(); syncToCloud(true); showToast('Restaurado com sucesso!');
+              }, '⚠️');
+          }
           else { showCustomAlert("Erro", "Formato inválido.", "❌"); }
         } catch (err) { showCustomAlert("Erro", "JSON inválido: " + err.message, "❌"); } 
         finally { e.target.value = ''; } 

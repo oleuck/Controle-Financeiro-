@@ -133,6 +133,10 @@
     .flex-between { display: flex; justify-content: space-between; align-items: center; }
     
     #userSelectionOverlay { position: fixed; inset: 0; background: var(--bg-primary); z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.5rem; }
+    #cloudLoadingOverlay { position: fixed; inset: 0; background: rgba(15,23,42,0.85); z-index: 99998; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; color: #f8fafc; }
+    .light #cloudLoadingOverlay { background: rgba(248,250,252,0.9); color: #0f172a; }
+    .cloud-spinner { width: 42px; height: 42px; border-radius: 50%; border: 4px solid rgba(148,163,184,0.35); border-top-color: var(--accent-blue); animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
     .user-btn { padding: 1.5rem 3rem; font-size: 1.5rem; border-radius: 1rem; border: none; cursor: pointer; font-weight: 700; transition: transform 0.2s; box-shadow: var(--card-shadow); display: flex; align-items: center; gap: 0.75rem; }
     .user-btn:hover { transform: scale(1.05); }
     .btn-otavio { background: var(--accent-blue); color: #fff; }
@@ -174,6 +178,13 @@
       </div>
   </div>
 
+  <!-- BLOQUEIO DURANTE CARREGAMENTO DA NUVEM (evita que edições feitas antes da sincronia sejam perdidas) -->
+  <div id="cloudLoadingOverlay">
+      <div class="cloud-spinner"></div>
+      <div style="font-weight:600; font-size:0.95rem;">Carregando seus dados da nuvem...</div>
+      <div style="font-size:0.75rem; color: var(--text-muted); max-width: 260px; text-align:center;">Aguarde um instante antes de editar, para não perder nenhuma alteração.</div>
+  </div>
+
   <div id="appContainer" style="display: none; flex-direction: column; min-height: 100vh;">
     <header>
       <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -194,6 +205,7 @@
         <button class="btn btn-secondary btn-sm" onclick="launch13()">🎁 13º</button>
         <button class="btn btn-secondary btn-sm" onclick="exportDataJSON()">📥 Backup</button>
         <label class="btn btn-secondary btn-sm" style="cursor: pointer;">📤 Restaurar<input type="file" id="importInput" accept=".json" style="display:none;" onchange="importDataJSON(event)"></label>
+        <button class="btn btn-secondary btn-sm" onclick="restoreAutoBackup()" title="Recupera a última versão salva automaticamente na nuvem, antes da última gravação">🛟 Backup Automático</button>
         <button class="btn btn-secondary btn-sm" onclick="exportCSV()">📊 CSV</button>
         <button class="btn btn-danger btn-sm" onclick="confirmResetCache()">🧹 Resetar Tudo</button>
       </div>
@@ -669,7 +681,14 @@
   <script>
     const $ = id => document.getElementById(id);
     const firebaseConfig = { apiKey: "AIzaSyBEdIIZlNHr9drPwu5RqY5e2muGOxMiKKg", authDomain: "controle-dindin-5ba40.firebaseapp.com", projectId: "controle-dindin-5ba40", storageBucket: "controle-dindin-5ba40.firebasestorage.app", messagingSenderId: "825601485885", appId: "1:825601485885:web:402b83722306025b9e0e54" };
-    let db = null; try { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); } catch (err) {}
+    let db = null;
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        // Habilita cache offline + sincronização entre abas do mesmo navegador,
+        // reduzindo o risco de duas abas do mesmo usuário brigarem por qual versão é a "certa".
+        db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
+    } catch (err) {}
     
     let activeUser = null;
     let pendingUser = null;
@@ -722,11 +741,19 @@
         $('userSelectionOverlay').style.display = 'none';
         $('appContainer').style.display = 'flex';
         $('userEmailBadge').innerText = userKey === 'otavio' ? '👨 Otávio' : '👩 Alessandra';
-        
+
+        // Bloqueia a tela até os dados da nuvem chegarem, para nenhuma edição feita
+        // durante o carregamento ser sobrescrita quando a resposta da nuvem chegar.
+        $('cloudLoadingOverlay').style.display = 'flex';
+
         if(unsubscribeFirestore) { unsubscribeFirestore(); unsubscribeFirestore = null; }
         state = loadLocalFallback();
         renderYears(); renderTabs(); fillSelects(); render();
         startRealtimeSync();
+
+        // Se por algum motivo a nuvem não responder (offline, erro, sem Firebase),
+        // libera a tela com o cache local após um tempo limite em vez de travar o usuário.
+        setTimeout(() => { if (!isDataLoaded) { isDataLoaded = true; $('cloudLoadingOverlay').style.display = 'none'; } }, 6000);
     }
 
     function switchUser() {
@@ -734,6 +761,7 @@
         pendingUser = null;
         isDataLoaded = false;
         $('appContainer').style.display = 'none';
+        $('cloudLoadingOverlay').style.display = 'none';
         $('userSelectionOverlay').style.display = 'flex';
         $('stepSelectUser').style.display = 'flex';
         $('stepPassword').style.display = 'none';
@@ -790,32 +818,58 @@
     function setSyncStatus(isSyncing) { const dot = $('syncDot'); if (dot) { if (isSyncing) dot.classList.add('syncing'); else dot.classList.remove('syncing'); } }
 
     function startRealtimeSync() {
-      if (!db || !activeUser) return; 
-      setSyncStatus(true); 
+      if (!db || !activeUser) { isDataLoaded = true; $('cloudLoadingOverlay').style.display = 'none'; return; }
+      setSyncStatus(true);
       const docRef = db.collection("financas").doc("dados_" + activeUser);
-      unsubscribeFirestore = docRef.onSnapshot(doc => { 
-          setSyncStatus(false); 
+      unsubscribeFirestore = docRef.onSnapshot(doc => {
+          setSyncStatus(false);
+          // Ignora o "eco" da própria escrita local (hasPendingWrites=true): esse snapshot
+          // já reflete o state atual e reaplicá-lo é desnecessário e pode sobrescrever
+          // uma edição ainda mais recente feita entre o clique de salvar e o eco chegar.
+          const isLocalEcho = doc.metadata && doc.metadata.hasPendingWrites;
+          const firstLoad = !isDataLoaded;
           isDataLoaded = true;
-          if (doc.exists) { 
-              const remoteData = doc.data(); 
-              if (remoteData && remoteData.years) { 
-                  state = sanitizeData(remoteData); 
-                  localStorage.setItem('financas_cache_' + activeUser, JSON.stringify(state)); 
-                  renderYears(); renderTabs(); fillSelects(); render(); 
-              } 
-          } else { 
-              docRef.set(state); 
-          } 
-      }, err => { setSyncStatus(false); });
+          $('cloudLoadingOverlay').style.display = 'none';
+
+          if (isLocalEcho && !firstLoad) return;
+
+          if (doc.exists) {
+              const remoteData = doc.data();
+              if (remoteData && remoteData.years) {
+                  state = sanitizeData(remoteData);
+                  localStorage.setItem('financas_cache_' + activeUser, JSON.stringify(state));
+                  renderYears(); renderTabs(); fillSelects(); render();
+              }
+          } else {
+              docRef.set(state);
+          }
+      }, err => { setSyncStatus(false); isDataLoaded = true; $('cloudLoadingOverlay').style.display = 'none'; });
+    }
+
+    function backupBeforeOverwrite(docRef) {
+      // Guarda uma cópia da última versão que estava na nuvem ANTES de sobrescrevê-la.
+      // Isso cria uma rede de segurança: se algo gravar um estado ruim/vazio por engano,
+      // ainda é possível recuperar manualmente a versão anterior no console do Firebase
+      // (coleção "financas_backups").
+      return docRef.get().then(snap => {
+          if (snap.exists && snap.data() && snap.data().years) {
+              return db.collection('financas_backups').doc('dados_' + activeUser).set({
+                  data: snap.data(),
+                  backedUpAt: new Date().toISOString()
+              }).catch(() => {});
+          }
+      }).catch(() => {});
     }
 
     function syncToCloud(immediate = false) {
       if(!activeUser) return;
-      localStorage.setItem('financas_cache_' + activeUser, JSON.stringify(state)); 
-      if (!db || !isDataLoaded) return; 
+      localStorage.setItem('financas_cache_' + activeUser, JSON.stringify(state));
+      if (!db || !isDataLoaded) return;
       setSyncStatus(true); clearTimeout(saveTimeout);
-      if (immediate) { db.collection("financas").doc("dados_" + activeUser).set(state).then(() => setSyncStatus(false)).catch(e => setSyncStatus(false)); } 
-      else { saveTimeout = setTimeout(() => { db.collection("financas").doc("dados_" + activeUser).set(state).then(() => setSyncStatus(false)).catch(e => setSyncStatus(false)); }, 500); }
+      const docRef = db.collection("financas").doc("dados_" + activeUser);
+      const doWrite = () => backupBeforeOverwrite(docRef).then(() => docRef.set(state)).then(() => setSyncStatus(false)).catch(e => setSyncStatus(false));
+      if (immediate) { doWrite(); }
+      else { saveTimeout = setTimeout(doWrite, 500); }
     }
 
     function toggleTheme() { const html = document.documentElement; html.className = html.classList.contains('dark') ? 'light' : 'dark'; }
@@ -1351,6 +1405,21 @@
         } catch (err) { showCustomAlert("Erro", "JSON inválido: " + err.message, "❌"); } 
         finally { e.target.value = ''; } 
       }; r.readAsText(f);
+    }
+
+    function restoreAutoBackup() {
+      if (!db || !activeUser) { showCustomAlert("Indisponível", "Sem conexão com a nuvem no momento.", "⚠️"); return; }
+      db.collection('financas_backups').doc('dados_' + activeUser).get().then(snap => {
+          if (!snap.exists || !snap.data() || !snap.data().data) { showCustomAlert("Nada encontrado", "Ainda não existe um backup automático salvo para este usuário.", "🛟"); return; }
+          const backup = snap.data();
+          const when = backup.backedUpAt ? new Date(backup.backedUpAt).toLocaleString('pt-BR') : 'data desconhecida';
+          showCustomConfirm("Restaurar Backup Automático?", `Isso irá substituir os dados atuais pela versão salva em ${when} (imediatamente antes da última gravação na nuvem). Deseja continuar?`, () => {
+              localStorage.setItem('financas_backup_seguranca_' + activeUser, JSON.stringify(state));
+              state = sanitizeData(backup.data);
+              renderYears(); renderTabs(); fillSelects(); render(); syncToCloud(true);
+              showToast('Backup automático restaurado!');
+          }, '🛟');
+      }).catch(() => showCustomAlert("Erro", "Não foi possível buscar o backup automático.", "❌"));
     }
 
     function exportCSV() { const d = getMonthData(); let csv = "Forma Pgto;Descricao;Categoria;Valor;Data Compra;Vencimento;Status;Parcela;Obs\n"; (d.expenses||[]).forEach(e => { csv += `"${e.formaPgto || ''}";"${e.descricao || ''}";"${e.categoria || ''}";"${e.valor || 0}";"${e.dataDespesa || ''}";"${e.vencimento || ''}";"${e.status || ''}";"${e.parcela || ''}";"${e.obs || ''}"\n`; }); const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `despesas_${activeUser}_${state.currentYear}_${state.currentMonth}.csv`; a.click(); showToast('CSV exportado!'); }

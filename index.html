@@ -451,7 +451,7 @@
     </div>
   </div>
 
-  <!-- MODAL DE DESPESA (BLINDADO) -->
+  <!-- MODAL DE DESPESA -->
   <div class="modal-overlay" id="expenseModal">
     <div class="modal-box">
       <div class="modal-header">
@@ -587,7 +587,7 @@
       </div>
   </div>
 
-  <!-- MODAL DE RECEITA (BLINDADO) -->
+  <!-- MODAL DE RECEITA -->
   <div class="modal-overlay" id="incomeModal">
     <div class="modal-box" style="max-width: 400px;">
       <div class="modal-header"><h3 id="incModalTitle">Receita</h3><button class="btn btn-secondary btn-icon" onclick="closeModal('incomeModal')">✕</button></div>
@@ -609,7 +609,7 @@
     </div>
   </div>
 
-  <!-- MODAL DE ANO (BLINDADO) -->
+  <!-- MODAL DE ANO -->
   <div class="modal-overlay" id="yearModal">
     <div class="modal-box" style="max-width: 400px;">
         <div class="modal-header"><h3>Novo Ano</h3><button class="btn btn-secondary btn-icon" onclick="closeModal('yearModal')">✕</button></div>
@@ -925,7 +925,7 @@
       const inv = document.createElement('button'); inv.className = `month-btn annual-btn ${state.currentMonth === 'INVEST' ? 'active' : ''}`; inv.style.color = 'var(--accent-blue)'; inv.innerHTML = '💎 Investimentos'; inv.onclick = () => { state.currentMonth = 'INVEST'; renderTabs(); render(); }; wrap.appendChild(inv);
     }
 
-    function launchFerias() { const periodoStr = prompt("Valor das férias (sem adicional):", "0"); if (!periodoStr) return; const periodo = parseFloat(periodoStr.replace(',', '.')); if (isNaN(periodo) || periodo <= 0) return; const terco = periodo / 3; const total = periodo + terco; openIncomeModal(); $('incName').value = 'Férias (Período + 1/3)'; $('incVal').value = total.toFixed(2); showCustomAlert('Férias', `Total: ${fmt(total)}\nConfirme no modal!`, '🏖️'); }
+    function launchFerias() { const periodoStr = prompt("Valor das férias (sem adicional):", "0"); if (!periodoStr) return; const periodo = parseFloat(periodoStr.replace(',', '.')); if (isNaN(periodo) || periodo <= 0) return; const terco = periodo / 3; const total = periodo + terco; openIncomeModal(); $('incName').value = 'Férias (Período + 1/3)'; $('incVal').value = total.toFixed(2); showCustomAlert('Férias', `Total: ${fmt(total)}\\nConfirme no modal!`, '🏖️'); }
     function launch13() { const valorStr = prompt("Valor do 13º (líquido):", "0"); if (!valorStr) return; const valor = parseFloat(valorStr.replace(',', '.')); if (isNaN(valor) || valor <= 0) return; const parcela = prompt("Parcela 1 ou 2? (vazio se única)", "1"); openIncomeModal(); $('incName').value = parcela ? `13º Salário (${parcela}ª)` : '13º Salário'; $('incVal').value = valor.toFixed(2); }
 
     function fillSelects() {
@@ -1201,7 +1201,6 @@
       openModal('expenseModal');
     }
 
-    // Funcões disparadas diretamente pelo HTML para evitar erros de leitura
     function handleExpenseSubmit(e) { if (e) e.preventDefault(); saveExpense(); }
     
     function saveExpense() {
@@ -1310,7 +1309,7 @@
       const result = findExpenseGlobal(id); if (!result) return; const exp = result.exp;
       const msgHtml = `<div style="margin-bottom: 1rem;">Deseja excluir <strong>${exp.descricao}</strong>?</div><div style="padding: 0.75rem; background: var(--bg-tertiary); border-radius: 0.5rem; border: 1px solid var(--border-color);"><label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.85rem; font-weight: 600;"><input type="checkbox" id="delFutureCheckbox" style="width: 16px; height: 16px;">Excluir também dos meses seguintes</label></div>`;
       showCustomConfirm("Excluir Despesa", msgHtml, () => {
-        const deleteFuture = $('delFutureCheckbox') &&$('delFutureCheckbox').checked;
+        const deleteFuture = $('delFutureCheckbox') && $('delFutureCheckbox').checked;
         state.years[result.year][result.month].expenses = state.years[result.year][result.month].expenses.filter(e => e.id !== id);
         if (deleteFuture) {
           const startMonthIdx = MONTHS.indexOf(result.month); const startYearNum = parseInt(result.year, 10);
@@ -1325,13 +1324,13 @@
 
     function openIncomeModal(idx = -1) {
       $('incIdx').value = idx;
-      if (idx >= 0) { const inc = getMonthData().incomes[idx]; $('incModalTitle').innerText = 'Editar Receita';$('incName').value = inc.name; $('incVal').value = inc.value; $('incDate').value = inc.date || ''; } 
-      else { $('incModalTitle').innerText = 'Nova Receita';$('incName').value = ''; $('incVal').value = ''; const currentYNum = parseInt(state.currentYear, 10); const currentMIdx = MONTHS.indexOf(state.currentMonth);$('incDate').value = `${currentYNum}-${String(currentMIdx+1).padStart(2,'0')}-01`; }
+      if (idx >= 0) { const inc = getMonthData().incomes[idx]; $('incModalTitle').innerText = 'Editar Receita'; $('incName').value = inc.name; $('incVal').value = inc.value; $('incDate').value = inc.date || ''; } 
+      else { $('incModalTitle').innerText = 'Nova Receita'; $('incName').value = ''; $('incVal').value = ''; const currentYNum = parseInt(state.currentYear, 10); const currentMIdx = MONTHS.indexOf(state.currentMonth); $('incDate').value = `${currentYNum}-${String(currentMIdx+1).padStart(2,'0')}-01`; }
       openModal('incomeModal');
     }
 
     function handleIncomeSubmit(e) {
-      if(e) e.preventDefault(); const idx = parseInt($('incIdx').value, 10); const name = $('incName').value.trim(); const val = parseFloat($('incVal').value) || 0; const dateVal = $('incDate').value; const all =$('incAll').checked;
+      if(e) e.preventDefault(); const idx = parseInt($('incIdx').value, 10); const name = $('incName').value.trim(); const val = parseFloat($('incVal').value) || 0; const dateVal = $('incDate').value; const all = $('incAll').checked;
       if (all) { MONTHS.forEach((m, mIdx) => { const d = getMonthData(state.currentYear, m); let dateToSave = dateVal; if(dateVal && dateVal.includes('-')) { const parts = dateVal.split('-'); dateToSave = `${parts[0]}-${String(mIdx + 1).padStart(2, '0')}-${parts[2]}`; } if (idx >= 0 && d.incomes[idx]) d.incomes[idx] = { name, value: val, date: dateToSave }; else d.incomes.push({ name, value: val, date: dateToSave }); }); } 
       else { const d = getMonthData(); if (idx >= 0 && d.incomes[idx]) d.incomes[idx] = { name, value: val, date: dateVal }; else d.incomes.push({ name, value: val, date: dateVal }); }
       closeModal('incomeModal'); render(); syncToCloud(); showToast('Receita salva!');
@@ -1350,23 +1349,23 @@
 
     function openCatModal() { renderCatList(); openModal('catModal'); }
     function renderCatList() { const wrap = $('catListWrap'); wrap.innerHTML = ''; state.categories.forEach((c, i) => { wrap.innerHTML += `<div class="income-item" style="flex-direction:row;"><span style="display:flex; align-items:center; gap:0.4rem;"><input type="color" value="${c.color}" onchange="updateCatCol(${i}, this.value)" style="width:24px; height:24px; padding:0; border:none; cursor:pointer; border-radius:4px;"><strong>${c.name}</strong></span><button class="btn btn-danger btn-sm" onclick="delCat(${i})">🗑️</button></div>`; }); }
-    function addCatBtn() { const n = $('catNewName').value.trim().toUpperCase(); const c = $('catNewCol').value; if (n) { if (state.categories.some(x => x.name.toUpperCase() === n)) return; state.categories.push({ name: n, color: c });$('catNewName').value = ''; renderCatList(); fillSelects(); render(); syncToCloud(); } }
+    function addCatBtn() { const n = $('catNewName').value.trim().toUpperCase(); const c = $('catNewCol').value; if (n) { if (state.categories.some(x => x.name.toUpperCase() === n)) return; state.categories.push({ name: n, color: c }); $('catNewName').value = ''; renderCatList(); fillSelects(); render(); syncToCloud(); } }
     function updateCatCol(idx, col) { if (state.categories[idx]) { state.categories[idx].color = col; fillSelects(); render(); syncToCloud(); } }
     function delCat(idx) { showCustomConfirm("Excluir", "Deseja excluir esta categoria?", () => { state.categories.splice(idx, 1); renderCatList(); fillSelects(); render(); syncToCloud(); }, '🏷️'); }
 
     function openPayModal() { renderPayList(); openModal('payModal'); }
     function renderPayList() { const wrap = $('payListWrap'); wrap.innerHTML = ''; state.paymentMethods.forEach((p, i) => { wrap.innerHTML += `<div class="income-item" style="flex-direction:row;"><strong>${p}</strong> <button class="btn btn-danger btn-sm" onclick="delPay(${i})">🗑️</button></div>`; }); }
-    function addPay() { const n = $('payNewName').value.trim().toUpperCase(); if (n) { if (state.paymentMethods.includes(n)) return; state.paymentMethods.push(n);$('payNewName').value = ''; renderPayList(); fillSelects(); render(); syncToCloud(); } }
+    function addPay() { const n = $('payNewName').value.trim().toUpperCase(); if (n) { if (state.paymentMethods.includes(n)) return; state.paymentMethods.push(n); $('payNewName').value = ''; renderPayList(); fillSelects(); render(); syncToCloud(); } }
     function delPay(idx) { showCustomConfirm("Excluir", "Deseja excluir esta forma de pagamento?", () => { state.paymentMethods.splice(idx, 1); renderPayList(); fillSelects(); render(); syncToCloud(); }, '💳'); }
 
     function openCardModal() { renderCardList(); toggleCardTypeUI(); openModal('cardModal'); }
-    function toggleCardTypeUI() { const type = $('cardType').value; const fixedFields = $('cardFixedFields'); const rollingFields =$('cardRollingFields'); if (type === 'rolling') { fixedFields.style.display = 'none'; rollingFields.style.display = 'grid'; $('closingDay').required = false; $('dueDay').required = false; } else { fixedFields.style.display = 'grid'; rollingFields.style.display = 'none'; $('closingDay').required = true; $('dueDay').required = true; } }
-    function editCard(idx) { const c = state.cards[idx]; $('cardIdToEdit').value = c.id; $('cardName').value = c.name; $('cardType').value = c.type; $('cardLimit').value = c.limit || ''; toggleCardTypeUI(); if (c.type === 'rolling') { $('rollingDays').value = c.rollingDays \vert{}\vert{} ''; } else {$('closingDay').value = c.closingDay || ''; $('dueDay').value = c.dueDay \vert{}\vert{} ''; }$('btnSalvarCartao').innerText = "💾 Atualizar"; }
+    function toggleCardTypeUI() { const type = $('cardType').value; const fixedFields = $('cardFixedFields'); const rollingFields = $('cardRollingFields'); if (type === 'rolling') { fixedFields.style.display = 'none'; rollingFields.style.display = 'grid'; $('closingDay').required = false; $('dueDay').required = false; } else { fixedFields.style.display = 'grid'; rollingFields.style.display = 'none'; $('closingDay').required = true; $('dueDay').required = true; } }
+    function editCard(idx) { const c = state.cards[idx]; $('cardIdToEdit').value = c.id; $('cardName').value = c.name; $('cardType').value = c.type; $('cardLimit').value = c.limit || ''; toggleCardTypeUI(); if (c.type === 'rolling') { $('rollingDays').value = c.rollingDays || ''; } else { $('closingDay').value = c.closingDay || ''; $('dueDay').value = c.dueDay || ''; } $('btnSalvarCartao').innerText = "💾 Atualizar"; }
     function saveCardFromModal(e) {
-      e.preventDefault(); const type = $('cardType').value; const name = $('cardName').value.trim(); if(!name) return; const editId =$('cardIdToEdit').value;
-      if (editId) { const card = state.cards.find(c => c.id === editId); if (card) { const oldName = card.name; card.name = name; card.type = type; card.limit = parseFloat($('cardLimit').value) \vert{}\vert{} 0; if (type === 'rolling') { card.rollingDays =$('rollingDays').value || 30; } else { card.closingDay = $('closingDay').value \vert{}\vert{} 1; card.dueDay =$('dueDay').value || 10; } for (let y in state.years) { for (let m in state.years[y]) { (state.years[y][m].expenses||[]).forEach(exp => { if (exp.formaPgto === oldName) exp.formaPgto = name; }); } } } } 
-      else { const newCard = { id: 'card_' + Date.now(), name: name, type: type, limit: parseFloat($('cardLimit').value) \vert{}\vert{} 0 }; if (type === 'rolling') { newCard.rollingDays =$('rollingDays').value || 30; } else { newCard.closingDay = $('closingDay').value \vert{}\vert{} 1; newCard.dueDay =$('dueDay').value || 10; } state.cards.push(newCard); }
-      $('cardIdToEdit').value = '';$('btnSalvarCartao').innerText = "+ Salvar Cartão"; $('cardForm').reset(); toggleCardTypeUI(); renderCardList(); fillSelects(); syncToCloud(); render(); showToast('Cartão salvo!');
+      e.preventDefault(); const type = $('cardType').value; const name = $('cardName').value.trim(); if(!name) return; const editId = $('cardIdToEdit').value;
+      if (editId) { const card = state.cards.find(c => c.id === editId); if (card) { const oldName = card.name; card.name = name; card.type = type; card.limit = parseFloat($('cardLimit').value) || 0; if (type === 'rolling') { card.rollingDays = $('rollingDays').value || 30; } else { card.closingDay = $('closingDay').value || 1; card.dueDay = $('dueDay').value || 10; } for (let y in state.years) { for (let m in state.years[y]) { (state.years[y][m].expenses||[]).forEach(exp => { if (exp.formaPgto === oldName) exp.formaPgto = name; }); } } } } 
+      else { const newCard = { id: 'card_' + Date.now(), name: name, type: type, limit: parseFloat($('cardLimit').value) || 0 }; if (type === 'rolling') { newCard.rollingDays = $('rollingDays').value || 30; } else { newCard.closingDay = $('closingDay').value || 1; newCard.dueDay = $('dueDay').value || 10; } state.cards.push(newCard); }
+      $('cardIdToEdit').value = ''; $('btnSalvarCartao').innerText = "+ Salvar Cartão"; $('cardForm').reset(); toggleCardTypeUI(); renderCardList(); fillSelects(); syncToCloud(); render(); showToast('Cartão salvo!');
     }
     function delCard(idx) { showCustomConfirm("Excluir", "Deseja excluir este cartão?", () => { state.cards.splice(idx, 1); renderCardList(); fillSelects(); syncToCloud(); render(); }, '💳'); }
     function renderCardList() { const wrap = $('cardListWrap'); wrap.innerHTML = ''; if(state.cards.length === 0) { wrap.innerHTML = '<div style="color:var(--text-muted); font-size: 0.8rem; text-align: center;">Nenhum cartão.</div>'; return; } state.cards.forEach((c, i) => { const isRolling = c.type === 'rolling'; const ruleText = isRolling ? `Cobra ${c.rollingDays} dias após compra` : `Fecha dia ${c.closingDay} / Vence dia ${c.dueDay}`; wrap.innerHTML += `<div class="income-item" style="flex-direction:row;"><div style="display: flex; flex-direction: column;"><strong>💳 ${c.name}</strong><small style="color: var(--text-muted); font-size: 0.75rem;">Regra: ${ruleText}</small></div><div style="display: flex; gap: 5px;"><button type="button" class="btn btn-secondary btn-sm" onclick="editCard(${i})">✏</button><button type="button" class="btn btn-danger btn-sm" onclick="delCard(${i})">🗑️</button></div></div>`; }); }
@@ -1396,9 +1395,11 @@
         
         tbody.innerHTML += `<tr><td><strong>${m}</strong></td><td style="color: var(--accent-green); font-weight:600;">${fmt(inc)}</td><td style="color: var(--accent-red); font-weight:600;">${fmt(exp)}</td><td style="font-weight: 700; color: ${bal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">${fmt(bal)}</td><td><span class="parcela-badge">${pct}%</span></td><td><span style="color: var(--accent-green);">${fmt(paid)}</span></td><td><span style="color: var(--accent-yellow);">${fmt(pend)}</span></td><td style="text-align: center;"><button class="btn btn-secondary btn-sm" onclick="state.currentMonth='${m}'; renderTabs(); render();">Abrir</button></td></tr>`;
       });
-      $('annIncomes').innerText = fmt(totI);$('annExpenses').innerText = fmt(totE); 
+      $('annIncomes').innerText = fmt(totI); $('annExpenses').innerText = fmt(totE); 
       const annBal = totI - totE; 
-      $('annBalance').innerText = fmt(annBal); $('annBalance').style.color = annBal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';$('annualTableFoot').innerHTML = `<tr><td>TOTAL ANUAL</td><td style="color: var(--accent-green);">${fmt(totI)}</td><td style="color: var(--accent-red);">${fmt(totE)}</td><td style="color: ${annBal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">${fmt(annBal)}</td><td>-</td><td>${fmt(totP)}</td><td>${fmt(totPend)}</td><td></td></tr>`;
+      $('annBalance').innerText = fmt(annBal); $('annBalance').style.color = annBal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'; 
+      
+      $('annualTableFoot').innerHTML = `<tr><td>TOTAL ANUAL</td><td style="color: var(--accent-green);">${fmt(totI)}</td><td style="color: var(--accent-red);">${fmt(totE)}</td><td style="color: ${annBal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">${fmt(annBal)}</td><td>-</td><td>${fmt(totP)}</td><td>${fmt(totPend)}</td><td></td></tr>`;
     }
 
     function exportDataJSON() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2)); const a = document.createElement('a'); a.href = dataStr; a.download = `backup_financas_${activeUser}_completo.json`; a.click(); showToast('Backup gerado!'); }
@@ -1436,7 +1437,7 @@
       }).catch(() => showCustomAlert("Erro", "Não foi possível buscar o backup automático.", "❌"));
     }
 
-    function exportCSV() { const d = getMonthData(); let csv = "Forma Pgto;Descricao;Categoria;Valor;Data Compra;Vencimento;Status;Parcela;Obs\n"; (d.expenses||[]).forEach(e => { csv += `"${e.formaPgto || ''}";"${e.descricao || ''}";"${e.categoria || ''}";"${e.valor || 0}";"${e.dataDespesa || ''}";"${e.vencimento || ''}";"${e.status || ''}";"${e.parcela || ''}";"${e.obs || ''}"\n`; }); const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `despesas_${activeUser}_${state.currentYear}_${state.currentMonth}.csv`; a.click(); showToast('CSV exportado!'); }
+    function exportCSV() { const d = getMonthData(); let csv = "Forma Pgto;Descricao;Categoria;Valor;Data Compra;Vencimento;Status;Parcela;Obs\\n"; (d.expenses||[]).forEach(e => { csv += `"${e.formaPgto || ''}";"${e.descricao || ''}";"${e.categoria || ''}";"${e.valor || 0}";"${e.dataDespesa || ''}";"${e.vencimento || ''}";"${e.status || ''}";"${e.parcela || ''}";"${e.obs || ''}"\\n`; }); const blob = new Blob(["\\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `despesas_${activeUser}_${state.currentYear}_${state.currentMonth}.csv`; a.click(); showToast('CSV exportado!'); }
 
   </script>
 </body>

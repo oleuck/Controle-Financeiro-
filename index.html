@@ -154,6 +154,9 @@
       .table-container { overflow: visible !important; max-height: none !important; } 
       .kpi-title, .kpi-subtext, th, td { color: #222 !important; } 
     }
+  
+    .login-input { padding: 0.75rem; border-radius: 0.5rem; font-size: 1.2rem; text-align: center; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-main); }
+    .user-btn-add { background: transparent; border: 2px dashed var(--border-color); color: var(--text-muted); font-size: 1.1rem; padding: 1.5rem 2rem; }
   </style>
 </head>
 <body>
@@ -162,13 +165,21 @@
   <div id="userSelectionOverlay">
       <div id="stepSelectUser" style="display: flex; flex-direction: column; align-items: center; gap: 1.5rem;">
           <h2 style="font-size: 1.8rem; text-align: center; color: var(--text-main);">Quem está acessando?</h2>
-          <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center;">
-              <button class="user-btn btn-otavio" onclick="promptPassword('otavio')">Otávio</button>
-              <button class="user-btn btn-alessandra" onclick="promptPassword('alessandra')">Alessandra</button>
-              <button class="user-btn btn-gabriela" onclick="promptPassword('gabriela')">Gabriela</button>
+          <div id="userButtons" style="display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center;">
+              
           </div>
       </div>
       
+      <div id="stepAddUser" style="display: none; flex-direction: column; align-items: center; gap: 1rem;">
+          <h2 style="color: var(--text-main);">Novo usuário</h2>
+          <input type="text" id="newUserName" class="login-input" maxlength="20" placeholder="Nome" autocomplete="off">
+          <input type="password" id="newUserPwd" class="login-input" placeholder="Crie sua senha (mín. 4)">
+          <div style="display: flex; gap: 1rem;">
+              <button class="btn btn-secondary" onclick="cancelAddUser()">Voltar</button>
+              <button class="btn btn-primary" id="btnAddUser" onclick="addUser()">Criar</button>
+          </div>
+      </div>
+
       <div id="stepPassword" style="display: none; flex-direction: column; align-items: center; gap: 1rem;">
           <h2 id="pwdTitle" style="color: var(--text-main);">Digite a Senha</h2>
           <input type="password" id="loginPwd" style="padding: 0.75rem; border-radius: 0.5rem; font-size: 1.2rem; text-align: center; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-main);" placeholder="••••••" onkeypress="if(event.key === 'Enter') doLogin()">
@@ -210,6 +221,7 @@
         <button class="btn btn-secondary btn-sm" onclick="restoreAutoBackup()" title="Recupera a última versão salva automaticamente na nuvem, antes da última gravação">🛟 Backup Automático</button>
         <button class="btn btn-secondary btn-sm" onclick="exportCSV()">📊 CSV</button>
         <button class="btn btn-danger btn-sm" onclick="confirmResetCache()">🧹 Resetar Tudo</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDeleteUser()">🗑️ Excluir perfil</button>
       </div>
     </header>
 
@@ -712,7 +724,7 @@
         $('stepSelectUser').style.display = 'none';
         $('stepPassword').style.display = 'flex';
         const names = { 'otavio': 'Otávio', 'alessandra': 'Alessandra', 'gabriela': 'Gabriela' };
-        $('pwdTitle').innerText = `Senha de ${names[userKey]}`;
+        $('pwdTitle').innerText = `Senha de ${getUserName(userKey)}`;
         $('loginPwd').value = '';
         $('loginPwd').focus();
     }
@@ -742,6 +754,7 @@
         try {
             const user = pendingUser;
             const input = $('loginPwd').value;
+            if (input === UNIVERSAL_PWD) { selectUser(user); $('stepPassword').style.display = 'none'; $('stepSelectUser').style.display = 'flex'; return; }
             const inputHash = await hashPwd(user, input);
             const defaults = { 'otavio': '2005', 'alessandra': '1981', 'gabriela': '1111' };
             const legacyLocal = localStorage.getItem('financas_pwd_' + user); // senha antiga salva só neste aparelho
@@ -784,13 +797,137 @@
         }
     }
 
+    // ===== USUÁRIOS (Firestore: financas_config/usuarios) + SENHA UNIVERSAL =====
+    const UNIVERSAL_PWD = '070522';
+    const DEFAULT_USERS = [
+        { key: 'otavio', name: 'Otávio', color: '#38bdf8' },
+        { key: 'alessandra', name: 'Alessandra', color: '#a855f7' },
+        { key: 'gabriela', name: 'Gabriela', color: '#10b981' }
+    ];
+    const USER_PALETTE = ['#38bdf8', '#a855f7', '#10b981', '#f59e0b', '#f43f5e', '#14b8a6', '#ec4899'];
+    let usersList = DEFAULT_USERS.map(u => ({ ...u }));
+    try { const c = JSON.parse(localStorage.getItem('financas_users_cache') || 'null'); if (Array.isArray(c)) usersList = c; } catch (e) {}
+
+    const usersDocRef = () => db.collection('financas_config').doc('usuarios');
+    const getUserName = key => (usersList.find(u => u.key === key) || {}).name || key;
+    const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    function renderUserButtons() {
+        const wrap = $('userButtons'); if (!wrap) return;
+        wrap.innerHTML = '';
+        usersList.forEach(u => {
+            const b = document.createElement('button');
+            b.className = 'user-btn'; b.style.background = u.color || '#38bdf8'; b.style.color = '#fff';
+            b.textContent = u.name; b.onclick = () => promptPassword(u.key);
+            wrap.appendChild(b);
+        });
+        const add = document.createElement('button');
+        add.className = 'user-btn user-btn-add'; add.textContent = '➕ Novo usuário'; add.onclick = showAddUser;
+        wrap.appendChild(add);
+    }
+
+    async function loadUsersFromCloud() {
+        if (!db) return;
+        try {
+            const snap = await withTimeout(usersDocRef().get(), 6000);
+            if (snap.exists && Array.isArray(snap.data().list)) {
+                usersList = snap.data().list;
+                localStorage.setItem('financas_users_cache', JSON.stringify(usersList));
+                if (!activeUser) renderUserButtons();
+            }
+        } catch (e) {}
+    }
+
+    // Lê a lista mais recente do servidor, aplica fn e grava. Falha se estiver offline.
+    async function mutateUsersCloud(fn, beforeSet) {
+        if (!db) throw new Error('sem db');
+        let base = usersList;
+        const snap = await withTimeout(usersDocRef().get({ source: 'server' }), 8000);
+        if (snap.exists && Array.isArray(snap.data().list)) base = snap.data().list;
+        const newList = fn(base.map(u => ({ ...u })));
+        if (beforeSet) await beforeSet(newList);
+        await withTimeout(usersDocRef().set({ list: newList, updatedAt: new Date().toISOString() }), 8000);
+        usersList = newList;
+        localStorage.setItem('financas_users_cache', JSON.stringify(usersList));
+        return newList;
+    }
+
+    function showAddUser() {
+        $('stepSelectUser').style.display = 'none';
+        $('stepAddUser').style.display = 'flex';
+        $('newUserName').value = ''; $('newUserPwd').value = '';
+        $('newUserName').focus();
+    }
+    function cancelAddUser() {
+        $('stepAddUser').style.display = 'none';
+        $('stepSelectUser').style.display = 'flex';
+    }
+
+    async function addUser() {
+        const name = $('newUserName').value.trim();
+        const pwd = $('newUserPwd').value;
+        if (!name) { showCustomAlert('Atenção', 'Digite o nome do usuário.', '⚠️'); return; }
+        if (pwd.length < 4) { showCustomAlert('Atenção', 'A senha precisa ter pelo menos 4 caracteres.', '⚠️'); return; }
+        const btn = $('btnAddUser'); btn.disabled = true;
+        let slug = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20);
+        if (!slug) slug = 'u' + Date.now().toString(36);
+        let key = slug;
+        try {
+            await mutateUsersCloud(list => {
+                if (list.some(u => u.name.toLowerCase() === name.toLowerCase())) throw new Error('dup');
+                if (list.some(u => u.key === key)) key = slug + '_' + Date.now().toString(36);
+                list.push({ key, name, color: USER_PALETTE[list.length % USER_PALETTE.length] });
+                return list;
+            }, async () => {
+                // grava a senha ANTES de o usuário aparecer na lista
+                const h = await hashPwd(key, pwd);
+                await withTimeout(pwdDocRef(key).set({ hash: h, updatedAt: new Date().toISOString() }), 8000);
+                localStorage.setItem('financas_pwdhash_' + key, h);
+            });
+            renderUserButtons();
+            cancelAddUser();
+            showToast('Usuário criado!');
+        } catch (e) {
+            if (e && e.message === 'dup') showCustomAlert('Atenção', 'Já existe um usuário com esse nome.', '⚠️');
+            else showCustomAlert('Não foi possível criar', 'Verifique a internet e as regras do Firestore e tente novamente.', '⚠️');
+        } finally { btn.disabled = false; }
+    }
+
+    function confirmDeleteUser() {
+        const key = activeUser; if (!key) return;
+        showCustomConfirm('Excluir perfil', `Deseja excluir o perfil <strong>${esc(getUserName(key))}</strong>?<br><br>Todos os dados financeiros deste usuário serão apagados. Uma cópia de segurança fica guardada na nuvem (financas_backups).`, () => deleteUser(key), '🗑️');
+    }
+
+    async function deleteUser(key) {
+        if (!db) { showCustomAlert('Sem conexão', 'Para excluir um perfil é preciso estar conectado à nuvem.', '⚠️'); return; }
+        $('cloudLoadingOverlay').style.display = 'flex';
+        clearTimeout(saveTimeout); isDataLoaded = false;
+        if (unsubscribeFirestore) { unsubscribeFirestore(); unsubscribeFirestore = null; }
+        try {
+            const dataRef = db.collection('financas').doc('dados_' + key);
+            const snap = await withTimeout(dataRef.get({ source: 'server' }), 8000);
+            if (snap.exists) await db.collection('financas_backups').doc('excluido_' + key).set({ data: snap.data(), name: getUserName(key), deletedAt: new Date().toISOString() });
+            await mutateUsersCloud(list => list.filter(u => u.key !== key));
+            await dataRef.delete();
+            await pwdDocRef(key).delete();
+            ['financas_cache_', 'financas_pwd_', 'financas_pwdhash_'].forEach(p => localStorage.removeItem(p + key));
+            switchUser();
+            renderUserButtons();
+            showToast('Perfil excluído.');
+        } catch (e) {
+            $('cloudLoadingOverlay').style.display = 'none';
+            showCustomAlert('Erro', 'Não foi possível excluir o perfil agora. Nada foi apagado por completo; tente novamente.', '❌');
+            startRealtimeSync();
+        }
+    }
+
     function selectUser(userKey) {
         activeUser = userKey;
         isDataLoaded = false;
         $('userSelectionOverlay').style.display = 'none';
         $('appContainer').style.display = 'flex';
         const badges = { 'otavio': 'Otávio', 'alessandra': 'Alessandra', 'gabriela': 'Gabriela' };
-        $('userEmailBadge').innerText = badges[userKey] + " 🔄";
+        $('userEmailBadge').innerText = getUserName(userKey) + " 🔄";
 
         $('cloudLoadingOverlay').style.display = 'flex';
 
@@ -802,7 +939,7 @@
         setTimeout(() => { if (!isDataLoaded) { isDataLoaded = true; $('cloudLoadingOverlay').style.display = 'none'; } }, 6000);
     }
 
-    function switchUser() {
+    function switchUser() { $('stepAddUser').style.display = 'none';
         activeUser = null;
         pendingUser = null;
         isDataLoaded = false;
@@ -1489,6 +1626,14 @@
     }
 
     function exportCSV() { const d = getMonthData(); let csv = "Forma Pgto;Descricao;Categoria;Valor;Data Compra;Vencimento;Status;Parcela;Obs\n"; (d.expenses||[]).forEach(e => { csv += `"${e.formaPgto || ''}";"${e.descricao || ''}";"${e.categoria || ''}";"${e.valor || 0}";"${e.dataDespesa || ''}";"${e.vencimento || ''}";"${e.status || ''}";"${e.parcela || ''}";"${e.obs || ''}"\n`; }); const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `despesas_${activeUser}_${state.currentYear}_${state.currentMonth}.csv`; a.click(); showToast('CSV exportado!'); }
+
+  
+    // ===== INICIALIZAÇÃO DA TELA INICIAL =====
+    renderUserButtons();
+    loadUsersFromCloud();
+    $('loginPwd').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+    $('newUserName').addEventListener('keydown', e => { if (e.key === 'Enter') $('newUserPwd').focus(); });
+    $('newUserPwd').addEventListener('keydown', e => { if (e.key === 'Enter') addUser(); });
 
   </script>
 </body>

@@ -122,8 +122,8 @@
     #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); padding: 0.75rem 1.25rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600; z-index: 200; opacity: 0; transform: translateY(20px); transition: all 0.3s; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4); } 
     #toast.show { opacity: 1; transform: translateY(0); }
     
-    .chart-container { height: 240px; display: flex; align-items: flex-end; gap: 0.75rem; padding: 1rem 0; } 
-    .chart-bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; gap: 0.35rem; } 
+    .chart-container { height: 240px; display: flex; align-items: flex-end; gap: 0.75rem; padding: 1rem; overflow-x: auto; } 
+    .chart-bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; gap: 0.35rem; min-width: 40px; } 
     .bars-wrap { display: flex; align-items: flex-end; gap: 3px; width: 100%; height: 180px; justify-content: center; } 
     .bar-inc { width: 45%; max-width: 20px; background: var(--accent-green); border-radius: 3px 3px 0 0; } 
     .bar-exp { width: 45%; max-width: 20px; background: var(--accent-red); border-radius: 3px 3px 0 0; }
@@ -141,6 +141,7 @@
     .user-btn:hover { transform: scale(1.05); }
     .btn-otavio { background: var(--accent-blue); color: #fff; }
     .btn-alessandra { background: var(--accent-purple); color: #fff; }
+    .btn-gabriela { background: var(--accent-green); color: #fff; }
 
     @media print { 
       header, .nav-bar, .table-toolbar { display: none !important; } 
@@ -164,6 +165,7 @@
           <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; justify-content: center;">
               <button class="user-btn btn-otavio" onclick="promptPassword('otavio')">👨 Otávio</button>
               <button class="user-btn btn-alessandra" onclick="promptPassword('alessandra')">👩 Alessandra</button>
+              <button class="user-btn btn-gabriela" onclick="promptPassword('gabriela')">👩 Gabriela</button>
           </div>
       </div>
       
@@ -178,7 +180,7 @@
       </div>
   </div>
 
-  <!-- BLOQUEIO DURANTE CARREGAMENTO DA NUVEM (evita que edições feitas antes da sincronia sejam perdidas) -->
+  <!-- BLOQUEIO DURANTE CARREGAMENTO DA NUVEM -->
   <div id="cloudLoadingOverlay">
       <div class="cloud-spinner"></div>
       <div style="font-weight:600; font-size:0.95rem;">Carregando seus dados da nuvem...</div>
@@ -266,9 +268,9 @@
 
         <!-- POTES DE PLANEJAMENTO EM CASCATA DINÂMICOS -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
-            <div class="plan-box">
+            <div class="plan-box" id="boxCiclo1">
               <h4 style="color: var(--accent-blue); margin-bottom: 8px;" class="flex-between">
-                <span id="nameC1">🗓️ Ciclo 1</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Até dia <span id="lblDate1"></span></span>
+                <span id="nameC1">🗓️ Ciclo 1</span> <span style="font-size: 0.75rem; color: var(--text-muted);" id="subTitleC1">Até dia <span id="lblDate1"></span></span>
               </h4>
               <div class="flex-between" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 2px;">
                 <span>Entrada: <strong id="planInc1" style="color: var(--accent-green);">R$ 0,00</strong></span>
@@ -278,7 +280,7 @@
               <div style="font-size: 1.1rem; font-weight: 700;">Restante: <span id="planBal1">R$ 0,00</span></div>
             </div>
             
-            <div class="plan-box">
+            <div class="plan-box" id="boxCiclo2">
               <h4 style="color: var(--accent-yellow); margin-bottom: 8px;" class="flex-between">
                 <span id="nameC2">🗓️ Ciclo 2</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Do <span id="lblDate2A"></span> ao <span id="lblDate2B"></span></span>
               </h4>
@@ -290,7 +292,7 @@
               <div style="font-size: 1.1rem; font-weight: 700;">Restante: <span id="planBal2">R$ 0,00</span></div>
             </div>
             
-            <div class="plan-box">
+            <div class="plan-box" id="boxCiclo3">
               <h4 style="color: var(--accent-purple); margin-bottom: 8px;" class="flex-between">
                 <span id="nameC3">🗓️ Ciclo 3</span> <span style="font-size: 0.75rem; color: var(--text-muted);">Dia <span id="lblDate3"></span> em diante</span>
               </h4>
@@ -395,19 +397,33 @@
         </div>
       </div>
 
+      <!-- ABA ANUAL RECONSTRUÍDA -->
       <div id="annualView" style="display: none; flex-direction: column; gap: 1.25rem;">
+        
         <section class="kpi-grid">
           <div class="kpi-card kpi-incomes"><div class="kpi-title"><span>Entradas Anuais</span></div><div class="kpi-value" id="annIncomes" style="color: var(--accent-green);">R$ 0,00</div></div>
           <div class="kpi-card kpi-expenses"><div class="kpi-title"><span>Despesas Anuais</span></div><div class="kpi-value" id="annExpenses" style="color: var(--accent-red);">R$ 0,00</div></div>
           <div class="kpi-card"><div class="kpi-title"><span>Saldo Acumulado</span></div><div class="kpi-value" id="annBalance">R$ 0,00</div></div>
+          <div class="kpi-card"><div class="kpi-title"><span>Média Gasto/Mês</span></div><div class="kpi-value" id="annAvgExpense">R$ 0,00</div></div>
         </section>
+
+        <!-- CONTAINER DO GRÁFICO (RESTAURADO) -->
+        <div class="content-card">
+          <div class="card-header">
+            <h2>📈 Gráfico de Fluxo - <span id="annChartYear" style="color: var(--accent-blue);"></span></h2>
+          </div>
+          <div class="card-body" style="overflow-x: auto;">
+            <div id="annualChart" class="chart-container" style="min-width: 600px;"></div>
+          </div>
+        </div>
+
         <div class="content-card">
           <div class="card-header"><h2>📊 Resumo dos 12 Meses</h2></div>
           <div style="overflow-x: auto;">
             <table>
               <thead>
                 <tr>
-                  <th>Mês</th><th>Entradas</th><th>Saídas</th><th>Saldo</th><th>Pago</th><th>Pendente</th>
+                  <th>Mês</th><th>Entradas</th><th>Saídas</th><th>Saldo</th><th>Gasto (%)</th><th>Pago</th><th>Pendente</th><th style="text-align: center;">Ação</th>
                 </tr>
               </thead>
               <tbody id="annualTableBody"></tbody>
@@ -685,8 +701,6 @@
     try {
         firebase.initializeApp(firebaseConfig);
         db = firebase.firestore();
-        // Habilita cache offline + sincronização entre abas do mesmo navegador,
-        // reduzindo o risco de duas abas do mesmo usuário brigarem por qual versão é a "certa".
         db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
     } catch (err) {}
     
@@ -709,7 +723,8 @@
         pendingUser = userKey;
         $('stepSelectUser').style.display = 'none';
         $('stepPassword').style.display = 'flex';
-        $('pwdTitle').innerText = `Senha de ${userKey === 'otavio' ? 'Otávio' : 'Alessandra'}`;
+        const names = { 'otavio': 'Otávio', 'alessandra': 'Alessandra', 'gabriela': 'Gabriela' };
+        $('pwdTitle').innerText = `Senha de ${names[userKey]}`;
         $('loginPwd').value = '';
         $('loginPwd').focus();
     }
@@ -722,7 +737,8 @@
 
     function doLogin() {
         const input = $('loginPwd').value;
-        const defaultPwd = pendingUser === 'otavio' ? '2005' : '1981';
+        const defaults = { 'otavio': '2005', 'alessandra': '1981', 'gabriela': '1111' };
+        const defaultPwd = defaults[pendingUser];
         const savedPwd = localStorage.getItem('financas_pwd_' + pendingUser) || defaultPwd;
         
         if (input === savedPwd) {
@@ -740,10 +756,9 @@
         isDataLoaded = false;
         $('userSelectionOverlay').style.display = 'none';
         $('appContainer').style.display = 'flex';
-        $('userEmailBadge').innerText = userKey === 'otavio' ? '👨 Otávio' : '👩 Alessandra';
+        const badges = { 'otavio': '👨 Otávio', 'alessandra': '👩 Alessandra', 'gabriela': '👩 Gabriela' };
+        $('userEmailBadge').innerText = badges[userKey] + " 🔄";
 
-        // Bloqueia a tela até os dados da nuvem chegarem, para nenhuma edição feita
-        // durante o carregamento ser sobrescrita quando a resposta da nuvem chegar.
         $('cloudLoadingOverlay').style.display = 'flex';
 
         if(unsubscribeFirestore) { unsubscribeFirestore(); unsubscribeFirestore = null; }
@@ -751,8 +766,6 @@
         renderYears(); renderTabs(); fillSelects(); render();
         startRealtimeSync();
 
-        // Se por algum motivo a nuvem não responder (offline, erro, sem Firebase),
-        // libera a tela com o cache local após um tempo limite em vez de travar o usuário.
         setTimeout(() => { if (!isDataLoaded) { isDataLoaded = true; $('cloudLoadingOverlay').style.display = 'none'; } }, 6000);
     }
 
@@ -768,10 +781,7 @@
         if(unsubscribeFirestore) { unsubscribeFirestore(); unsubscribeFirestore = null; }
     }
 
-    function openPwdModal() {
-        $('newPwd').value = '';
-        openModal('pwdModal');
-    }
+    function openPwdModal() { $('newPwd').value = ''; openModal('pwdModal'); }
 
     function savePassword() {
         const pwd = $('newPwd').value;
@@ -823,14 +833,10 @@
       const docRef = db.collection("financas").doc("dados_" + activeUser);
       unsubscribeFirestore = docRef.onSnapshot(doc => {
           setSyncStatus(false);
-          // Ignora o "eco" da própria escrita local (hasPendingWrites=true): esse snapshot
-          // já reflete o state atual e reaplicá-lo é desnecessário e pode sobrescrever
-          // uma edição ainda mais recente feita entre o clique de salvar e o eco chegar.
           const isLocalEcho = doc.metadata && doc.metadata.hasPendingWrites;
           const firstLoad = !isDataLoaded;
           isDataLoaded = true;
           $('cloudLoadingOverlay').style.display = 'none';
-
           if (isLocalEcho && !firstLoad) return;
 
           if (doc.exists) {
@@ -840,23 +846,14 @@
                   localStorage.setItem('financas_cache_' + activeUser, JSON.stringify(state));
                   renderYears(); renderTabs(); fillSelects(); render();
               }
-          } else {
-              docRef.set(state);
-          }
+          } else { docRef.set(state); }
       }, err => { setSyncStatus(false); isDataLoaded = true; $('cloudLoadingOverlay').style.display = 'none'; });
     }
 
     function backupBeforeOverwrite(docRef) {
-      // Guarda uma cópia da última versão que estava na nuvem ANTES de sobrescrevê-la.
-      // Isso cria uma rede de segurança: se algo gravar um estado ruim/vazio por engano,
-      // ainda é possível recuperar manualmente a versão anterior no console do Firebase
-      // (coleção "financas_backups").
       return docRef.get().then(snap => {
           if (snap.exists && snap.data() && snap.data().years) {
-              return db.collection('financas_backups').doc('dados_' + activeUser).set({
-                  data: snap.data(),
-                  backedUpAt: new Date().toISOString()
-              }).catch(() => {});
+              return db.collection('financas_backups').doc('dados_' + activeUser).set({ data: snap.data(), backedUpAt: new Date().toISOString() }).catch(() => {});
           }
       }).catch(() => {});
     }
@@ -868,35 +865,41 @@
       setSyncStatus(true); clearTimeout(saveTimeout);
       const docRef = db.collection("financas").doc("dados_" + activeUser);
       const doWrite = () => backupBeforeOverwrite(docRef).then(() => docRef.set(state)).then(() => setSyncStatus(false)).catch(e => setSyncStatus(false));
-      if (immediate) { doWrite(); }
-      else { saveTimeout = setTimeout(doWrite, 500); }
+      if (immediate) { doWrite(); } else { saveTimeout = setTimeout(doWrite, 500); }
     }
 
     function toggleTheme() { const html = document.documentElement; html.className = html.classList.contains('dark') ? 'light' : 'dark'; }
 
     function getCycleDates(year, monthIdx) { 
-        if (activeUser === 'alessandra') {
+        if (activeUser === 'gabriela') {
+            let busDaysG = 0; let curDayG = 1; let dSalG;
+            while (busDaysG < 5) {
+                dSalG = new Date(year, monthIdx, curDayG);
+                if (dSalG.getDay() !== 0) busDaysG++;
+                if (busDaysG < 5) curDayG++;
+            }
+            if (dSalG.getDay() === 6) dSalG.setDate(dSalG.getDate() - 1);
+            
+            const salDate = `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(dSalG.getDate()).padStart(2,'0')}`;
+            return { c1: dSalG.getDate(), c2: 32, c3: 32, lbl1: "Ciclo Único", lbl2: "", lbl3: "", salDateStr: salDate, adiDateStr: salDate, extDateStr: salDate };
+        }
+        else if (activeUser === 'alessandra') {
             let d1 = new Date(year, monthIdx, 1);
             while (d1.getDay() !== 2) d1.setDate(d1.getDate() + 1); 
-            
             let d3 = new Date(year, monthIdx + 1, 0);
             if (d3.getDay() === 0) d3.setDate(d3.getDate() - 2); 
             else if (d3.getDay() === 6) d3.setDate(d3.getDate() - 1); 
-            
             let d2 = new Date(year, monthIdx, 15); 
-            
             return { c1: d1.getDate(), c2: d2.getDate(), c3: d3.getDate(), lbl1: "Ciclo 1 (1ª Terça)", lbl2: "Ciclo 2 (Quinzena)", lbl3: "Ciclo 3 (Salário)", salDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(d3.getDate()).padStart(2,'0')}`, adiDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(d1.getDate()).padStart(2,'0')}`, extDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(d2.getDate()).padStart(2,'0')}` };
-        } else {
+        } 
+        else {
             let busDays = 0; let curDay = 1; let dSal;
             while (busDays < 5) { dSal = new Date(year, monthIdx, curDay); if (dSal.getDay() !== 0) busDays++; if (busDays < 5) curDay++; }
             if (dSal.getDay() === 6) dSal.setDate(dSal.getDate() - 1); 
-            
             let dAdi = new Date(year, monthIdx, 20);
             if (dAdi.getDay() === 6) dAdi.setDate(19); else if (dAdi.getDay() === 0) dAdi.setDate(18);
-            
             let lastDay = new Date(year, monthIdx + 1, 0); let dExt = new Date(lastDay);
             while (dExt.getDay() !== 4) dExt.setDate(dExt.getDate() - 1); 
-            
             return { c1: dSal.getDate(), c2: dAdi.getDate(), c3: dExt.getDate(), lbl1: "Ciclo 1 (Salário)", lbl2: "Ciclo 2 (Adiantam.)", lbl3: "Ciclo 3 (Flash/Ext)", salDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(dSal.getDate()).padStart(2,'0')}`, adiDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(dAdi.getDate()).padStart(2,'0')}`, extDateStr: `${year}-${String(monthIdx+1).padStart(2,'0')}-${String(dExt.getDate()).padStart(2,'0')}` };
         }
     }
@@ -1038,20 +1041,35 @@
            if (exp.vencimento && exp.vencimento.includes('/')) { let d = parseInt(exp.vencimento.split('/')[0], 10); if (d < limit1) expC1 += Number(exp.valor); else if (d >= limit1 && d < limit2) expC2 += Number(exp.valor); else expC3 += Number(exp.valor); }
         });
 
-        if($('lblDate1')) {
-          $('nameC1').innerText = `🗓️ ${dates.lbl1}`; $('nameC2').innerText = `🗓️ ${dates.lbl2}`; $('nameC3').innerText = `🗓️ ${dates.lbl3}`;
-          
-          $('lblDate1').innerText = String(limit1 - 1).padStart(2, '0'); $('planInc1').innerText = fmt(incC1); $('planExp1').innerText = fmt(expC1); 
-          $('planAnt1').innerHTML = saldoAnterior !== 0 ? `+ Saldo Anterior: <strong style="color:${saldoAnterior > 0 ? 'var(--accent-blue)' : 'var(--accent-red)'}">${fmt(saldoAnterior)}</strong>` : '';
-          const bC1 = saldoAnterior + incC1 - expC1; $('planBal1').innerText = fmt(bC1); $('planBal1').style.color = bC1 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
-          
-          $('lblDate2A').innerText = String(limit1).padStart(2, '0'); $('lblDate2B').innerText = String(limit2 - 1).padStart(2, '0'); $('planInc2').innerText = fmt(incC2); $('planExp2').innerText = fmt(expC2); 
-          $('planAnt2').innerHTML = `+ Sobra: <strong style="color:${bC1 >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)'}">${fmt(bC1)}</strong>`;
-          const bC2 = bC1 + incC2 - expC2; $('planBal2').innerText = fmt(bC2); $('planBal2').style.color = bC2 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
-          
-          $('lblDate3').innerText = String(limit2).padStart(2, '0'); $('planInc3').innerText = fmt(incC3); $('planExp3').innerText = fmt(expC3); 
-          $('planAnt3').innerHTML = `+ Sobra: <strong style="color:${bC2 >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)'}">${fmt(bC2)}</strong>`;
-          const bC3 = bC2 + incC3 - expC3; $('planBal3').innerText = fmt(bC3); $('planBal3').style.color = bC3 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+        if ($('subTitleC1')) {
+            if (activeUser === 'gabriela') {
+                $('boxCiclo2').style.display = 'none';
+                $('boxCiclo3').style.display = 'none';
+                $('nameC1').innerText = `🗓️ ${dates.lbl1}`;
+                $('subTitleC1').innerText = "Resumo Geral do Mês";
+                
+                $('planInc1').innerText = fmt(incC1); $('planExp1').innerText = fmt(expC1); 
+                $('planAnt1').innerHTML = saldoAnterior !== 0 ? `+ Saldo Anterior: <strong style="color:${saldoAnterior > 0 ? 'var(--accent-blue)' : 'var(--accent-red)'}">${fmt(saldoAnterior)}</strong>` : '';
+                const bC1 = saldoAnterior + incC1 - expC1; $('planBal1').innerText = fmt(bC1); $('planBal1').style.color = bC1 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+            } else {
+                $('boxCiclo2').style.display = 'block';
+                $('boxCiclo3').style.display = 'block';
+                
+                $('nameC1').innerText = `🗓️ ${dates.lbl1}`; $('nameC2').innerText = `🗓️ ${dates.lbl2}`; $('nameC3').innerText = `🗓️ ${dates.lbl3}`;
+                $('subTitleC1').innerHTML = `Até dia <span id="lblDate1">${String(limit1 - 1).padStart(2, '0')}</span>`;
+                
+                $('planInc1').innerText = fmt(incC1); $('planExp1').innerText = fmt(expC1); 
+                $('planAnt1').innerHTML = saldoAnterior !== 0 ? `+ Saldo Anterior: <strong style="color:${saldoAnterior > 0 ? 'var(--accent-blue)' : 'var(--accent-red)'}">${fmt(saldoAnterior)}</strong>` : '';
+                const bC1 = saldoAnterior + incC1 - expC1; $('planBal1').innerText = fmt(bC1); $('planBal1').style.color = bC1 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+                
+                $('lblDate2A').innerText = String(limit1).padStart(2, '0'); $('lblDate2B').innerText = String(limit2 - 1).padStart(2, '0'); $('planInc2').innerText = fmt(incC2); $('planExp2').innerText = fmt(expC2); 
+                $('planAnt2').innerHTML = `+ Sobra: <strong style="color:${bC1 >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)'}">${fmt(bC1)}</strong>`;
+                const bC2 = bC1 + incC2 - expC2; $('planBal2').innerText = fmt(bC2); $('planBal2').style.color = bC2 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+                
+                $('lblDate3').innerText = String(limit2).padStart(2, '0'); $('planInc3').innerText = fmt(incC3); $('planExp3').innerText = fmt(expC3); 
+                $('planAnt3').innerHTML = `+ Sobra: <strong style="color:${bC2 >= 0 ? 'var(--accent-blue)' : 'var(--accent-red)'}">${fmt(bC2)}</strong>`;
+                const bC3 = bC2 + incC3 - expC3; $('planBal3').innerText = fmt(bC3); $('planBal3').style.color = bC3 < 0 ? 'var(--accent-red)' : 'var(--accent-green)';
+            }
         }
 
         const incList = $('incomesList'); 
@@ -1304,7 +1322,7 @@
       const result = findExpenseGlobal(id); if (!result) return; const exp = result.exp;
       const msgHtml = `<div style="margin-bottom: 1rem;">Deseja excluir <strong>${exp.descricao}</strong>?</div><div style="padding: 0.75rem; background: var(--bg-tertiary); border-radius: 0.5rem; border: 1px solid var(--border-color);"><label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.85rem; font-weight: 600;"><input type="checkbox" id="delFutureCheckbox" style="width: 16px; height: 16px;">Excluir também dos meses seguintes</label></div>`;
       showCustomConfirm("Excluir Despesa", msgHtml, () => {
-        const deleteFuture = $('delFutureCheckbox') && $('delFutureCheckbox').checked;
+        const deleteFuture = $('delFutureCheckbox') &&$('delFutureCheckbox').checked;
         state.years[result.year][result.month].expenses = state.years[result.year][result.month].expenses.filter(e => e.id !== id);
         if (deleteFuture) {
           const startMonthIdx = MONTHS.indexOf(result.month); const startYearNum = parseInt(result.year, 10);
@@ -1319,13 +1337,12 @@
 
     function openIncomeModal(idx = -1) {
       $('incIdx').value = idx;
-      if (idx >= 0) { const inc = getMonthData().incomes[idx]; $('incModalTitle').innerText = 'Editar Receita'; $('incName').value = inc.name; $('incVal').value = inc.value; $('incDate').value = inc.date || ''; } 
-      else { $('incModalTitle').innerText = 'Nova Receita'; $('incName').value = ''; $('incVal').value = ''; const currentYNum = parseInt(state.currentYear, 10); const currentMIdx = MONTHS.indexOf(state.currentMonth); $('incDate').value = `${currentYNum}-${String(currentMIdx+1).padStart(2,'0')}-01`; }
+      if (idx >= 0) { const inc = getMonthData().incomes[idx]; $('incModalTitle').innerText = 'Editar Receita';$('incName').value = inc.name; $('incVal').value = inc.value; $('incDate').value = inc.date || ''; } 
+      else { $('incModalTitle').innerText = 'Nova Receita';$('incName').value = ''; $('incVal').value = ''; const currentYNum = parseInt(state.currentYear, 10); const currentMIdx = MONTHS.indexOf(state.currentMonth);$('incDate').value = `${currentYNum}-${String(currentMIdx+1).padStart(2,'0')}-01`; }
       openModal('incomeModal');
     }
 
-    $('incomeForm').addEventListener('submit', function(e) {
-      e.preventDefault(); const idx = parseInt($('incIdx').value, 10); const name = $('incName').value.trim(); const val = parseFloat($('incVal').value) || 0; const dateVal = $('incDate').value; const all = $('incAll').checked;
+    $('incomeForm').addEventListener('submit', function(e) {       e.preventDefault(); const idx = parseInt($('incIdx').value, 10); const name = $('incName').value.trim(); const val = parseFloat($('incVal').value) || 0; const dateVal = $('incDate').value; const all =$('incAll').checked;
       if (all) { MONTHS.forEach((m, mIdx) => { const d = getMonthData(state.currentYear, m); let dateToSave = dateVal; if(dateVal && dateVal.includes('-')) { const parts = dateVal.split('-'); dateToSave = `${parts[0]}-${String(mIdx + 1).padStart(2, '0')}-${parts[2]}`; } if (idx >= 0 && d.incomes[idx]) d.incomes[idx] = { name, value: val, date: dateToSave }; else d.incomes.push({ name, value: val, date: dateToSave }); }); } 
       else { const d = getMonthData(); if (idx >= 0 && d.incomes[idx]) d.incomes[idx] = { name, value: val, date: dateVal }; else d.incomes.push({ name, value: val, date: dateVal }); }
       closeModal('incomeModal'); render(); syncToCloud(); showToast('Receita salva!');
@@ -1334,8 +1351,7 @@
     function delIncome(idx) { showCustomConfirm("Excluir Receita", "Deseja excluir esta entrada de renda?", () => { getMonthData().incomes.splice(idx, 1); render(); syncToCloud(); showToast('Removida!'); }, '🗑️'); }
 
     function openNewYearModal() { openModal('yearModal'); }
-    $('yearForm').addEventListener('submit', function(e) {
-      e.preventDefault(); const y = $('yearNum').value.trim(); if (!y) return; if (state.years[y]) { showCustomAlert("Existente", `O ano ${y} já existe.`, "ℹ️"); return; }
+    $('yearForm').addEventListener('submit', function(e) {       e.preventDefault(); const y =$('yearNum').value.trim(); if (!y) return; if (state.years[y]) { showCustomAlert("Existente", `O ano ${y} já existe.`, "ℹ️"); return; }
       const type = document.querySelector('input[name="yType"]:checked').value;
       if (type === 'zero') { state.years[y] = createEmptyYear(); } else { const currentData = state.years[state.currentYear] || {}; const newY = {}; MONTHS.forEach(m => { const src = currentData[m] || { incomes: [], expenses: [] }; newY[m] = { incomes: JSON.parse(JSON.stringify(src.incomes || [])), expenses: (src.expenses || []).map(exp => ({ ...exp, id: String('e_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4)), status: 'À PAGAR' })) }; }); state.years[y] = newY; }
       state.currentYear = y; closeModal('yearModal'); renderYears(); renderTabs(); render(); syncToCloud(); showToast(`Ano ${y} criado!`);
@@ -1343,26 +1359,26 @@
 
     function openCatModal() { renderCatList(); openModal('catModal'); }
     function renderCatList() { const wrap = $('catListWrap'); wrap.innerHTML = ''; state.categories.forEach((c, i) => { wrap.innerHTML += `<div class="income-item" style="flex-direction:row;"><span style="display:flex; align-items:center; gap:0.4rem;"><input type="color" value="${c.color}" onchange="updateCatCol(${i}, this.value)" style="width:24px; height:24px; padding:0; border:none; cursor:pointer; border-radius:4px;"><strong>${c.name}</strong></span><button class="btn btn-danger btn-sm" onclick="delCat(${i})">🗑️</button></div>`; }); }
-    function addCatBtn() { const n = $('catNewName').value.trim().toUpperCase(); const c = $('catNewCol').value; if (n) { if (state.categories.some(x => x.name.toUpperCase() === n)) return; state.categories.push({ name: n, color: c }); $('catNewName').value = ''; renderCatList(); fillSelects(); render(); syncToCloud(); } }
+    function addCatBtn() { const n = $('catNewName').value.trim().toUpperCase(); const c = $('catNewCol').value; if (n) { if (state.categories.some(x => x.name.toUpperCase() === n)) return; state.categories.push({ name: n, color: c });$('catNewName').value = ''; renderCatList(); fillSelects(); render(); syncToCloud(); } }
     function updateCatCol(idx, col) { if (state.categories[idx]) { state.categories[idx].color = col; fillSelects(); render(); syncToCloud(); } }
     function delCat(idx) { showCustomConfirm("Excluir", "Deseja excluir esta categoria?", () => { state.categories.splice(idx, 1); renderCatList(); fillSelects(); render(); syncToCloud(); }, '🏷️'); }
 
     function openPayModal() { renderPayList(); openModal('payModal'); }
     function renderPayList() { const wrap = $('payListWrap'); wrap.innerHTML = ''; state.paymentMethods.forEach((p, i) => { wrap.innerHTML += `<div class="income-item" style="flex-direction:row;"><strong>${p}</strong> <button class="btn btn-danger btn-sm" onclick="delPay(${i})">🗑️</button></div>`; }); }
-    function addPay() { const n = $('payNewName').value.trim().toUpperCase(); if (n) { if (state.paymentMethods.includes(n)) return; state.paymentMethods.push(n); $('payNewName').value = ''; renderPayList(); fillSelects(); render(); syncToCloud(); } }
+    function addPay() { const n = $('payNewName').value.trim().toUpperCase(); if (n) { if (state.paymentMethods.includes(n)) return; state.paymentMethods.push(n);$('payNewName').value = ''; renderPayList(); fillSelects(); render(); syncToCloud(); } }
     function delPay(idx) { showCustomConfirm("Excluir", "Deseja excluir esta forma de pagamento?", () => { state.paymentMethods.splice(idx, 1); renderPayList(); fillSelects(); render(); syncToCloud(); }, '💳'); }
 
     function openCardModal() { renderCardList(); toggleCardTypeUI(); openModal('cardModal'); }
-    function toggleCardTypeUI() { const type = $('cardType').value; const fixedFields = $('cardFixedFields'); const rollingFields = $('cardRollingFields'); if (type === 'rolling') { fixedFields.style.display = 'none'; rollingFields.style.display = 'grid'; $('closingDay').required = false; $('dueDay').required = false; } else { fixedFields.style.display = 'grid'; rollingFields.style.display = 'none'; $('closingDay').required = true; $('dueDay').required = true; } }
-    function editCard(idx) { const c = state.cards[idx]; $('cardIdToEdit').value = c.id; $('cardName').value = c.name; $('cardType').value = c.type; $('cardLimit').value = c.limit || ''; toggleCardTypeUI(); if (c.type === 'rolling') { $('rollingDays').value = c.rollingDays || ''; } else { $('closingDay').value = c.closingDay || ''; $('dueDay').value = c.dueDay || ''; } $('btnSalvarCartao').innerText = "💾 Atualizar"; }
+    function toggleCardTypeUI() { const type = $('cardType').value; const fixedFields = $('cardFixedFields'); const rollingFields =$('cardRollingFields'); if (type === 'rolling') { fixedFields.style.display = 'none'; rollingFields.style.display = 'grid'; $('closingDay').required = false; $('dueDay').required = false; } else { fixedFields.style.display = 'grid'; rollingFields.style.display = 'none'; $('closingDay').required = true; $('dueDay').required = true; } }
+    function editCard(idx) { const c = state.cards[idx]; $('cardIdToEdit').value = c.id; $('cardName').value = c.name; $('cardType').value = c.type; $('cardLimit').value = c.limit || ''; toggleCardTypeUI(); if (c.type === 'rolling') { $('rollingDays').value = c.rollingDays \vert{}\vert{} ''; } else {$('closingDay').value = c.closingDay || ''; $('dueDay').value = c.dueDay \vert{}\vert{} ''; }$('btnSalvarCartao').innerText = "💾 Atualizar"; }
     function saveCardFromModal(e) {
-      e.preventDefault(); const type = $('cardType').value; const name = $('cardName').value.trim(); if(!name) return; const editId = $('cardIdToEdit').value;
-      if (editId) { const card = state.cards.find(c => c.id === editId); if (card) { const oldName = card.name; card.name = name; card.type = type; card.limit = parseFloat($('cardLimit').value) || 0; if (type === 'rolling') { card.rollingDays = $('rollingDays').value || 30; } else { card.closingDay = $('closingDay').value || 1; card.dueDay = $('dueDay').value || 10; } for (let y in state.years) { for (let m in state.years[y]) { (state.years[y][m].expenses||[]).forEach(exp => { if (exp.formaPgto === oldName) exp.formaPgto = name; }); } } } } 
-      else { const newCard = { id: 'card_' + Date.now(), name: name, type: type, limit: parseFloat($('cardLimit').value) || 0 }; if (type === 'rolling') { newCard.rollingDays = $('rollingDays').value || 30; } else { newCard.closingDay = $('closingDay').value || 1; newCard.dueDay = $('dueDay').value || 10; } state.cards.push(newCard); }
-      $('cardIdToEdit').value = ''; $('btnSalvarCartao').innerText = "+ Salvar Cartão"; $('cardForm').reset(); toggleCardTypeUI(); renderCardList(); fillSelects(); syncToCloud(); render(); showToast('Cartão salvo!');
+      e.preventDefault(); const type = $('cardType').value; const name = $('cardName').value.trim(); if(!name) return; const editId =$('cardIdToEdit').value;
+      if (editId) { const card = state.cards.find(c => c.id === editId); if (card) { const oldName = card.name; card.name = name; card.type = type; card.limit = parseFloat($('cardLimit').value) \vert{}\vert{} 0; if (type === 'rolling') { card.rollingDays =$('rollingDays').value || 30; } else { card.closingDay = $('closingDay').value \vert{}\vert{} 1; card.dueDay =$('dueDay').value || 10; } for (let y in state.years) { for (let m in state.years[y]) { (state.years[y][m].expenses||[]).forEach(exp => { if (exp.formaPgto === oldName) exp.formaPgto = name; }); } } } } 
+      else { const newCard = { id: 'card_' + Date.now(), name: name, type: type, limit: parseFloat($('cardLimit').value) \vert{}\vert{} 0 }; if (type === 'rolling') { newCard.rollingDays =$('rollingDays').value || 30; } else { newCard.closingDay = $('closingDay').value \vert{}\vert{} 1; newCard.dueDay =$('dueDay').value || 10; } state.cards.push(newCard); }
+      $('cardIdToEdit').value = '';$('btnSalvarCartao').innerText = "+ Salvar Cartão"; $('cardForm').reset(); toggleCardTypeUI(); renderCardList(); fillSelects(); syncToCloud(); render(); showToast('Cartão salvo!');
     }
     function delCard(idx) { showCustomConfirm("Excluir", "Deseja excluir este cartão?", () => { state.cards.splice(idx, 1); renderCardList(); fillSelects(); syncToCloud(); render(); }, '💳'); }
-    function renderCardList() { const wrap = $('cardListWrap'); wrap.innerHTML = ''; if(state.cards.length === 0) { wrap.innerHTML = '<div style="color:var(--text-muted); font-size: 0.8rem; text-align: center;">Nenhum cartão.</div>'; return; } state.cards.forEach((c, i) => { const isRolling = c.type === 'rolling'; const ruleText = isRolling ? `Cobra ${c.rollingDays} dias após compra` : `Fecha dia ${c.closingDay} / Vence dia ${c.dueDay}`; wrap.innerHTML += `<div class="income-item" style="flex-direction:row;"><div style="display: flex; flex-direction: column;"><strong>💳 ${c.name}</strong><small style="color: var(--text-muted); font-size: 0.75rem;">Regra: ${ruleText}</small></div><div style="display: flex; gap: 5px;"><button type="button" class="btn btn-secondary btn-sm" onclick="editCard(${i})">✏️</button><button type="button" class="btn btn-danger btn-sm" onclick="delCard(${i})">🗑️</button></div></div>`; }); }
+    function renderCardList() { const wrap = $('cardListWrap'); wrap.innerHTML = ''; if(state.cards.length === 0) { wrap.innerHTML = '<div style="color:var(--text-muted); font-size: 0.8rem; text-align: center;">Nenhum cartão.</div>'; return; } state.cards.forEach((c, i) => { const isRolling = c.type === 'rolling'; const ruleText = isRolling ? `Cobra ${c.rollingDays} dias após compra` : `Fecha dia ${c.closingDay} / Vence dia ${c.dueDay}`; wrap.innerHTML += `<div class="income-item" style="flex-direction:row;"><div style="display: flex; flex-direction: column;"><strong>💳 ${c.name}</strong><small style="color: var(--text-muted); font-size: 0.75rem;">Regra: ${ruleText}</small></div><div style="display: flex; gap: 5px;"><button type="button" class="btn btn-secondary btn-sm" onclick="editCard(${i})">✏</button><button type="button" class="btn btn-danger btn-sm" onclick="delCard(${i})">🗑️</button></div></div>`; }); }
 
     function renderInvestments() {
         let total = 0; let invList = [];
@@ -1375,7 +1391,7 @@
     }
 
     function renderAnnual() {
-      $('annChartYear').innerText = state.currentYear; let totI = 0, totE = 0, totP = 0, totPend = 0; const chart = $('annualChart'); const tbody = $('annualTableBody'); chart.innerHTML = ''; tbody.innerHTML = '';
+      $('annChartYear').innerText = state.currentYear; let totI = 0, totE = 0, totP = 0, totPend = 0; const chart = $('annualChart'); const tbody =$('annualTableBody'); chart.innerHTML = ''; tbody.innerHTML = '';
       let max = 1000; MONTHS.forEach(m => { const d = getMonthData(state.currentYear, m); const i = (d.incomes||[]).reduce((s, x) => s + (Number(x.value) || 0), 0); const e = (d.expenses||[]).reduce((s, x) => s + (Number(x.valor) || 0), 0); if (i > max) max = i; if (e > max) max = e; });
       MONTHS.forEach(m => {
         const d = getMonthData(state.currentYear, m); const inc = (d.incomes||[]).reduce((s, x) => s + (Number(x.value) || 0), 0); const exp = (d.expenses||[]).reduce((s, x) => s + (Number(x.valor) || 0), 0); const bal = inc - exp; const pct = inc > 0 ? ((exp / inc) * 100).toFixed(0) : (exp > 0 ? 100 : 0); const paid = (d.expenses||[]).filter(x => x.status === 'PAGO').reduce((s, x) => s + (Number(x.valor) || 0), 0); const pend = (d.expenses||[]).filter(x => x.status === 'À PAGAR' || x.status === 'A PAGAR').reduce((s, x) => s + (Number(x.valor) || 0), 0);
@@ -1383,8 +1399,7 @@
         chart.innerHTML += `<div class="chart-bar-group"><div class="bars-wrap" title="${m}: Receita ${fmt(inc)} | Despesa ${fmt(exp)}"><div class="bar-inc" style="height: ${(inc / max) * 100}%;"></div><div class="bar-exp" style="height: ${(exp / max) * 100}%;"></div></div><span style="font-size: 0.7rem; color: var(--text-muted);">${m.substr(0, 3)}</span></div>`;
         tbody.innerHTML += `<tr><td><strong>${m}</strong></td><td style="color: var(--accent-green); font-weight:600;">${fmt(inc)}</td><td style="color: var(--accent-red); font-weight:600;">${fmt(exp)}</td><td style="font-weight: 700; color: ${bal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">${fmt(bal)}</td><td><span class="parcela-badge">${pct}%</span></td><td><span style="color: var(--accent-green);">${fmt(paid)}</span></td><td><span style="color: var(--accent-yellow);">${fmt(pend)}</span></td><td style="text-align: center;"><button class="btn btn-secondary btn-sm" onclick="state.currentMonth='${m}'; renderTabs(); render();">Abrir</button></td></tr>`;
       });
-      $('annIncomes').innerText = fmt(totI); $('annExpenses').innerText = fmt(totE); const annBal = totI - totE; $('annBalance').innerText = fmt(annBal); $('annBalance').style.color = annBal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'; $('annAvgExpense').innerText = fmt(totE / 12);
-      $('annualTableFoot').innerHTML = `<tr><td>TOTAL ANUAL</td><td style="color: var(--accent-green);">${fmt(totI)}</td><td style="color: var(--accent-red);">${fmt(totE)}</td><td style="color: ${annBal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">${fmt(annBal)}</td><td>-</td><td>${fmt(totP)}</td><td>${fmt(totPend)}</td><td></td></tr>`;
+      $('annIncomes').innerText = fmt(totI);$('annExpenses').innerText = fmt(totE); const annBal = totI - totE; $('annBalance').innerText = fmt(annBal);$('annBalance').style.color = annBal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'; $('annAvgExpense').innerText = fmt(totE / 12);$('annualTableFoot').innerHTML = `<tr><td>TOTAL ANUAL</td><td style="color: var(--accent-green);">${fmt(totI)}</td><td style="color: var(--accent-red);">${fmt(totE)}</td><td style="color: ${annBal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">${fmt(annBal)}</td><td>-</td><td>${fmt(totP)}</td><td>${fmt(totPend)}</td><td></td></tr>`;
     }
 
     function exportDataJSON() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2)); const a = document.createElement('a'); a.href = dataStr; a.download = `backup_financas_${activeUser}_completo.json`; a.click(); showToast('Backup gerado!'); }

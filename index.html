@@ -723,19 +723,64 @@
         $('stepSelectUser').style.display = 'flex';
     }
 
-    function doLogin() {
-        const input = $('loginPwd').value;
-        const defaults = { 'otavio': '2005', 'alessandra': '1981', 'gabriela': '1111' };
-        const defaultPwd = defaults[pendingUser];
-        const savedPwd = localStorage.getItem('financas_pwd_' + pendingUser) || defaultPwd;
-        
-        if (input === savedPwd) {
-            selectUser(pendingUser);
-            $('stepPassword').style.display = 'none';
-            $('stepSelectUser').style.display = 'flex';
-        } else {
-            showCustomAlert("Acesso Negado", "A senha está incorreta!", "❌");
-            $('loginPwd').value = '';
+    // ===== SENHA SINCRONIZADA (Firestore: financas_config/senha_<usuario>) =====
+    async function hashPwd(user, pwd) {
+        try {
+            if (window.crypto && crypto.subtle) {
+                const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('financas:' + user + ':' + pwd));
+                return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+        } catch (e) {}
+        return 'p:' + pwd;
+    }
+    const pwdDocRef = user => db.collection('financas_config').doc('senha_' + user);
+    const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+
+    async function doLogin() {
+        const btn = document.querySelector('#stepPassword .btn-primary');
+        if (btn) btn.disabled = true;
+        try {
+            const user = pendingUser;
+            const input = $('loginPwd').value;
+            const inputHash = await hashPwd(user, input);
+            const defaults = { 'otavio': '2005', 'alessandra': '1981', 'gabriela': '1111' };
+            const legacyLocal = localStorage.getItem('financas_pwd_' + user); // senha antiga salva só neste aparelho
+            let cloudHash = null, cloudChecked = false;
+
+            if (db) {
+                try {
+                    const snap = await withTimeout(pwdDocRef(user).get(), 6000);
+                    cloudChecked = true;
+                    if (snap.exists && snap.data() && snap.data().hash) cloudHash = snap.data().hash;
+                } catch (e) {}
+            }
+
+            let ok = false;
+            if (cloudHash) {
+                ok = (inputHash === cloudHash);
+                if (ok) localStorage.setItem('financas_pwdhash_' + user, cloudHash);
+            } else if (!cloudChecked && localStorage.getItem('financas_pwdhash_' + user)) {
+                // sem conexão: usa a última senha conhecida neste aparelho
+                ok = (inputHash === localStorage.getItem('financas_pwdhash_' + user));
+            } else {
+                // ainda não há senha na nuvem: vale a antiga deste aparelho ou a padrão
+                ok = (input === (legacyLocal || defaults[user]));
+                // migração: se o usuário já tinha trocado a senha neste aparelho, sobe para a nuvem
+                if (ok && legacyLocal && cloudChecked) {
+                    try { await pwdDocRef(user).set({ hash: inputHash, updatedAt: new Date().toISOString() }); localStorage.setItem('financas_pwdhash_' + user, inputHash); } catch (e) {}
+                }
+            }
+
+            if (ok) {
+                selectUser(user);
+                $('stepPassword').style.display = 'none';
+                $('stepSelectUser').style.display = 'flex';
+            } else {
+                showCustomAlert("Acesso Negado", "A senha está incorreta!", "❌");
+                $('loginPwd').value = '';
+            }
+        } finally {
+            if (btn) btn.disabled = false;
         }
     }
 
@@ -771,12 +816,20 @@
 
     function openPwdModal() { $('newPwd').value = ''; openModal('pwdModal'); }
 
-    function savePassword() {
+    async function savePassword() {
         const pwd = $('newPwd').value;
         if(!pwd) { showCustomAlert('Aviso', 'Digite uma senha válida.', '⚠️'); return; }
-        localStorage.setItem('financas_pwd_' + activeUser, pwd);
-        closeModal('pwdModal');
-        showToast('Senha atualizada com sucesso!');
+        const h = await hashPwd(activeUser, pwd);
+        try {
+            if (!db) throw new Error('sem db');
+            await withTimeout(pwdDocRef(activeUser).set({ hash: h, updatedAt: new Date().toISOString() }), 8000);
+            localStorage.setItem('financas_pwdhash_' + activeUser, h);
+            localStorage.removeItem('financas_pwd_' + activeUser);
+            closeModal('pwdModal');
+            showToast('Senha atualizada em todos os dispositivos!');
+        } catch (e) {
+            showCustomAlert('Não sincronizou', 'Não consegui salvar a senha na nuvem (sem conexão ou sem permissão no Firestore). A senha NÃO foi alterada. Tente novamente com internet.', '⚠️');
+        }
     }
 
     function sanitizeData(raw) {
@@ -1360,11 +1413,11 @@
 
     function openCardModal() { renderCardList(); toggleCardTypeUI(); openModal('cardModal'); }
     function toggleCardTypeUI() { const type = $('cardType').value; const fixedFields = $('cardFixedFields'); const rollingFields =$('cardRollingFields'); if (type === 'rolling') { fixedFields.style.display = 'none'; rollingFields.style.display = 'grid'; $('closingDay').required = false; $('dueDay').required = false; } else { fixedFields.style.display = 'grid'; rollingFields.style.display = 'none'; $('closingDay').required = true; $('dueDay').required = true; } }
-    function editCard(idx) { const c = state.cards[idx]; $('cardIdToEdit').value = c.id; $('cardName').value = c.name; $('cardType').value = c.type; $('cardLimit').value = c.limit || ''; toggleCardTypeUI(); if (c.type === 'rolling') { $('rollingDays').value = c.rollingDays \vert{}\vert{} ''; } else {$('closingDay').value = c.closingDay || ''; $('dueDay').value = c.dueDay \vert{}\vert{} ''; }$('btnSalvarCartao').innerText = "💾 Atualizar"; }
+    function editCard(idx) { const c = state.cards[idx]; $('cardIdToEdit').value = c.id; $('cardName').value = c.name; $('cardType').value = c.type; $('cardLimit').value = c.limit || ''; toggleCardTypeUI(); if (c.type === 'rolling') { $('rollingDays').value = c.rollingDays || ''; } else {$('closingDay').value = c.closingDay || ''; $('dueDay').value = c.dueDay || ''; }$('btnSalvarCartao').innerText = "💾 Atualizar"; }
     function saveCardFromModal(e) {
       e.preventDefault(); const type = $('cardType').value; const name = $('cardName').value.trim(); if(!name) return; const editId =$('cardIdToEdit').value;
-      if (editId) { const card = state.cards.find(c => c.id === editId); if (card) { const oldName = card.name; card.name = name; card.type = type; card.limit = parseFloat($('cardLimit').value) \vert{}\vert{} 0; if (type === 'rolling') { card.rollingDays =$('rollingDays').value || 30; } else { card.closingDay = $('closingDay').value \vert{}\vert{} 1; card.dueDay =$('dueDay').value || 10; } for (let y in state.years) { for (let m in state.years[y]) { (state.years[y][m].expenses||[]).forEach(exp => { if (exp.formaPgto === oldName) exp.formaPgto = name; }); } } } } 
-      else { const newCard = { id: 'card_' + Date.now(), name: name, type: type, limit: parseFloat($('cardLimit').value) \vert{}\vert{} 0 }; if (type === 'rolling') { newCard.rollingDays =$('rollingDays').value || 30; } else { newCard.closingDay = $('closingDay').value \vert{}\vert{} 1; newCard.dueDay =$('dueDay').value || 10; } state.cards.push(newCard); }
+      if (editId) { const card = state.cards.find(c => c.id === editId); if (card) { const oldName = card.name; card.name = name; card.type = type; card.limit = parseFloat($('cardLimit').value) || 0; if (type === 'rolling') { card.rollingDays =$('rollingDays').value || 30; } else { card.closingDay = $('closingDay').value || 1; card.dueDay =$('dueDay').value || 10; } for (let y in state.years) { for (let m in state.years[y]) { (state.years[y][m].expenses||[]).forEach(exp => { if (exp.formaPgto === oldName) exp.formaPgto = name; }); } } } } 
+      else { const newCard = { id: 'card_' + Date.now(), name: name, type: type, limit: parseFloat($('cardLimit').value) || 0 }; if (type === 'rolling') { newCard.rollingDays =$('rollingDays').value || 30; } else { newCard.closingDay = $('closingDay').value || 1; newCard.dueDay =$('dueDay').value || 10; } state.cards.push(newCard); }
       $('cardIdToEdit').value = '';$('btnSalvarCartao').innerText = "+ Salvar Cartão"; $('cardForm').reset(); toggleCardTypeUI(); renderCardList(); fillSelects(); syncToCloud(); render(); showToast('Cartão salvo!');
     }
     function delCard(idx) { showCustomConfirm("Excluir", "Deseja excluir este cartão?", () => { state.cards.splice(idx, 1); renderCardList(); fillSelects(); syncToCloud(); render(); }, '💳'); }
@@ -1435,7 +1488,7 @@
       }).catch(() => showCustomAlert("Erro", "Não foi possível buscar o backup automático.", "❌"));
     }
 
-    function exportCSV() { const d = getMonthData(); let csv = "Forma Pgto;Descricao;Categoria;Valor;Data Compra;Vencimento;Status;Parcela;Obs\\n"; (d.expenses||[]).forEach(e => { csv += `"${e.formaPgto || ''}";"${e.descricao || ''}";"${e.categoria || ''}";"${e.valor || 0}";"${e.dataDespesa || ''}";"${e.vencimento || ''}";"${e.status || ''}";"${e.parcela || ''}";"${e.obs || ''}"\\n`; }); const blob = new Blob(["\\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `despesas_${activeUser}_${state.currentYear}_${state.currentMonth}.csv`; a.click(); showToast('CSV exportado!'); }
+    function exportCSV() { const d = getMonthData(); let csv = "Forma Pgto;Descricao;Categoria;Valor;Data Compra;Vencimento;Status;Parcela;Obs\n"; (d.expenses||[]).forEach(e => { csv += `"${e.formaPgto || ''}";"${e.descricao || ''}";"${e.categoria || ''}";"${e.valor || 0}";"${e.dataDespesa || ''}";"${e.vencimento || ''}";"${e.status || ''}";"${e.parcela || ''}";"${e.obs || ''}"\n`; }); const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `despesas_${activeUser}_${state.currentYear}_${state.currentMonth}.csv`; a.click(); showToast('CSV exportado!'); }
 
   </script>
 </body>

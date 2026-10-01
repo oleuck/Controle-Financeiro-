@@ -588,6 +588,21 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="partialPayModal">
+      <div class="modal-box" style="max-width: 400px;">
+          <div class="modal-header"><h3>💵 Pagamento Parcial</h3><button class="btn btn-secondary btn-icon" onclick="closeModal('partialPayModal')">✕</button></div>
+          <div class="modal-body">
+              <input type="hidden" id="partialPayId">
+              <p style="margin: 0; font-weight: 700;" id="partialPayDesc"></p>
+              <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">Valor atual: <strong id="partialPayTotal" style="color: var(--accent-red);"></strong></p>
+              <div><label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Quanto você pagou agora?</label><input type="number" step="0.01" min="0" inputmode="decimal" id="partialPayVal" oninput="partialPayCalc('paid')" style="width: 100%;" placeholder="Ex: 1700,00"></div>
+              <div><label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px;">…ou quanto ainda falta pagar?</label><input type="number" step="0.01" min="0" inputmode="decimal" id="partialRestVal" oninput="partialPayCalc('rest')" style="width: 100%;" placeholder="Ex: 634,57"></div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">O valor pago vira uma linha <strong>PAGO</strong> (sai do saldo real) e esta despesa fica só com o que falta, continuando <strong>À PAGAR</strong>. O total do mês não muda.</p>
+          </div>
+          <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeModal('partialPayModal')">Cancelar</button><button type="button" class="btn btn-success" onclick="confirmPartialPay()">Confirmar</button></div>
+      </div>
+  </div>
+
   <div class="modal-overlay" id="bulkPayModal">
       <div class="modal-box" style="max-width: 400px;">
           <div class="modal-header"><h3>💳 Pagar Fatura Lote</h3><button class="btn btn-secondary btn-icon" onclick="closeModal('bulkPayModal')">✕</button></div>
@@ -1345,6 +1360,7 @@
               <td>${e.parcela ? `<span class="parcela-badge">${e.parcela}</span>` : '-'}</td>
               <td><small style="color: var(--text-muted);">${e.obs || ''}</small></td>
               <td style="text-align: right;">
+                ${(!isFuture && e.status !== 'PAGO' && e.status !== 'GUARDADO') ? `<button class="btn btn-success btn-icon btn-sm" title="Pagamento parcial" onclick="openPartialPay('${e.id}')">💵</button>&nbsp;` : ''}
                 <button class="btn btn-secondary btn-icon btn-sm" onclick="openExpenseModal('${e.id}')">✏️</button>&nbsp;
                 <button class="btn btn-secondary btn-icon btn-sm" onclick="duplicateExpense('${e.id}')">📑</button>&nbsp;
                 <button class="btn btn-danger btn-icon btn-sm" onclick="delExpense('${e.id}')">🗑️</button>
@@ -1357,6 +1373,40 @@
 
     function sortTable(col) { currentSort.dir = (currentSort.col === col && currentSort.dir === 'asc') ? 'desc' : 'asc'; currentSort.col = col; renderTable(); }
     function clearFilters() { $('searchTable').value = ''; $('filterCat').value = ''; $('filterPay').value = ''; $('filterStat').value = ''; renderTable(); }
+
+    // ===== PAGAMENTO PARCIAL =====
+    function openPartialPay(id) {
+        const res = findExpenseGlobal(id); if (!res) return;
+        $('partialPayId').value = id;
+        $('partialPayDesc').innerText = (res.exp.formaPgto ? res.exp.formaPgto + ' • ' : '') + (res.exp.descricao || '');
+        $('partialPayTotal').innerText = fmt(res.exp.valor);
+        $('partialPayVal').value = ''; $('partialRestVal').value = '';
+        openModal('partialPayModal');
+        setTimeout(() => $('partialPayVal').focus(), 50);
+    }
+    function partialPayCalc(src) {
+        const res = findExpenseGlobal($('partialPayId').value); if (!res) return;
+        const total = Number(res.exp.valor) || 0;
+        const v = parseFloat($(src === 'paid' ? 'partialPayVal' : 'partialRestVal').value);
+        const other = $(src === 'paid' ? 'partialRestVal' : 'partialPayVal');
+        other.value = isNaN(v) ? '' : Math.max(0, total - v).toFixed(2);
+    }
+    function confirmPartialPay() {
+        const res = findExpenseGlobal($('partialPayId').value); if (!res) { closeModal('partialPayModal'); return; }
+        const exp = res.exp; const total = Math.round((Number(exp.valor) || 0) * 100) / 100;
+        const paid = Math.round(parseFloat($('partialPayVal').value) * 100) / 100;
+        if (isNaN(paid) || paid <= 0) { showCustomAlert('Atenção', 'Informe um valor pago maior que zero.', '⚠️'); return; }
+        if (paid >= total) {
+            exp.status = 'PAGO';
+            closeModal('partialPayModal'); render(); syncToCloud(); showToast('Despesa quitada!'); return;
+        }
+        const rest = Math.round((total - paid) * 100) / 100;
+        const part = { ...exp, id: String('e_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4)), descricao: exp.descricao + ' – pago parcial', valor: paid, status: 'PAGO' };
+        exp.valor = rest;
+        res.array.push(part);
+        closeModal('partialPayModal'); render(); syncToCloud();
+        showToast(`Pago ${fmt(paid)} • Falta ${fmt(rest)}`);
+    }
 
     function toggleStatus(id) { const res = findExpenseGlobal(id); if (!res) return; const exp = res.exp; const seq = ['À PAGAR', 'PAGO', 'GUARDADO', 'NÃO APLICÁVEL']; let idx = seq.indexOf(exp.status); if (idx === -1) idx = 0; exp.status = seq[(idx + 1) % seq.length]; render(); syncToCloud(); showToast(`Status: ${exp.status}`); }
 

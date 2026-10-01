@@ -122,12 +122,6 @@
     #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-main); padding: 0.75rem 1.25rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600; z-index: 200; opacity: 0; transform: translateY(20px); transition: all 0.3s; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4); } 
     #toast.show { opacity: 1; transform: translateY(0); }
     
-    .chart-container { height: 240px; display: flex; align-items: flex-end; gap: 0.75rem; padding: 1rem; overflow-x: auto; } 
-    .chart-bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; gap: 0.35rem; min-width: 40px; } 
-    .bars-wrap { display: flex; align-items: flex-end; gap: 3px; width: 100%; height: 180px; justify-content: center; } 
-    .bar-inc { width: 45%; max-width: 20px; background: var(--accent-green); border-radius: 3px 3px 0 0; } 
-    .bar-exp { width: 45%; max-width: 20px; background: var(--accent-red); border-radius: 3px 3px 0 0; }
-    
     .real-balance-banner { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 0.75rem; padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--card-shadow); border-left: 5px solid var(--accent-green); }
     
     .flex-between { display: flex; justify-content: space-between; align-items: center; }
@@ -397,33 +391,19 @@
         </div>
       </div>
 
-      <!-- ABA ANUAL RECONSTRUÍDA -->
       <div id="annualView" style="display: none; flex-direction: column; gap: 1.25rem;">
-        
         <section class="kpi-grid">
           <div class="kpi-card kpi-incomes"><div class="kpi-title"><span>Entradas Anuais</span></div><div class="kpi-value" id="annIncomes" style="color: var(--accent-green);">R$ 0,00</div></div>
           <div class="kpi-card kpi-expenses"><div class="kpi-title"><span>Despesas Anuais</span></div><div class="kpi-value" id="annExpenses" style="color: var(--accent-red);">R$ 0,00</div></div>
           <div class="kpi-card"><div class="kpi-title"><span>Saldo Acumulado</span></div><div class="kpi-value" id="annBalance">R$ 0,00</div></div>
-          <div class="kpi-card"><div class="kpi-title"><span>Média Gasto/Mês</span></div><div class="kpi-value" id="annAvgExpense">R$ 0,00</div></div>
         </section>
-
-        <!-- CONTAINER DO GRÁFICO (RESTAURADO) -->
-        <div class="content-card">
-          <div class="card-header">
-            <h2>📈 Gráfico de Fluxo - <span id="annChartYear" style="color: var(--accent-blue);"></span></h2>
-          </div>
-          <div class="card-body" style="overflow-x: auto;">
-            <div id="annualChart" class="chart-container" style="min-width: 600px;"></div>
-          </div>
-        </div>
-
         <div class="content-card">
           <div class="card-header"><h2>📊 Resumo dos 12 Meses</h2></div>
           <div style="overflow-x: auto;">
             <table>
               <thead>
                 <tr>
-                  <th>Mês</th><th>Entradas</th><th>Saídas</th><th>Saldo</th><th>Gasto (%)</th><th>Pago</th><th>Pendente</th><th style="text-align: center;">Ação</th>
+                  <th>Mês</th><th>Entradas</th><th>Saídas</th><th>Saldo</th><th>Pago</th><th>Pendente</th>
                 </tr>
               </thead>
               <tbody id="annualTableBody"></tbody>
@@ -1391,15 +1371,31 @@
     }
 
     function renderAnnual() {
-      $('annChartYear').innerText = state.currentYear; let totI = 0, totE = 0, totP = 0, totPend = 0; const chart = $('annualChart'); const tbody =$('annualTableBody'); chart.innerHTML = ''; tbody.innerHTML = '';
-      let max = 1000; MONTHS.forEach(m => { const d = getMonthData(state.currentYear, m); const i = (d.incomes||[]).reduce((s, x) => s + (Number(x.value) || 0), 0); const e = (d.expenses||[]).reduce((s, x) => s + (Number(x.valor) || 0), 0); if (i > max) max = i; if (e > max) max = e; });
+      let totI = 0, totE = 0, totP = 0, totPend = 0;
+      const tbody = $('annualTableBody');
+      if (tbody) tbody.innerHTML = '';
+      
       MONTHS.forEach(m => {
-        const d = getMonthData(state.currentYear, m); const inc = (d.incomes||[]).reduce((s, x) => s + (Number(x.value) || 0), 0); const exp = (d.expenses||[]).reduce((s, x) => s + (Number(x.valor) || 0), 0); const bal = inc - exp; const pct = inc > 0 ? ((exp / inc) * 100).toFixed(0) : (exp > 0 ? 100 : 0); const paid = (d.expenses||[]).filter(x => x.status === 'PAGO').reduce((s, x) => s + (Number(x.valor) || 0), 0); const pend = (d.expenses||[]).filter(x => x.status === 'À PAGAR' || x.status === 'A PAGAR').reduce((s, x) => s + (Number(x.valor) || 0), 0);
+        const d = getMonthData(state.currentYear, m); 
+        const inc = (d.incomes||[]).reduce((s, x) => s + (Number(x.value) || 0), 0); 
+        const exp = (d.expenses||[]).reduce((s, x) => s + (Number(x.valor) || 0), 0); 
+        const bal = inc - exp; 
+        const pct = inc > 0 ? ((exp / inc) * 100).toFixed(0) : (exp > 0 ? 100 : 0); 
+        const paid = (d.expenses||[]).filter(x => x.status === 'PAGO').reduce((s, x) => s + (Number(x.valor) || 0), 0); 
+        const pend = (d.expenses||[]).filter(x => x.status === 'À PAGAR' || x.status === 'A PAGAR').reduce((s, x) => s + (Number(x.valor) || 0), 0);
+        
         totI += inc; totE += exp; totP += paid; totPend += pend;
-        chart.innerHTML += `<div class="chart-bar-group"><div class="bars-wrap" title="${m}: Receita ${fmt(inc)} | Despesa ${fmt(exp)}"><div class="bar-inc" style="height: ${(inc / max) * 100}%;"></div><div class="bar-exp" style="height: ${(exp / max) * 100}%;"></div></div><span style="font-size: 0.7rem; color: var(--text-muted);">${m.substr(0, 3)}</span></div>`;
-        tbody.innerHTML += `<tr><td><strong>${m}</strong></td><td style="color: var(--accent-green); font-weight:600;">${fmt(inc)}</td><td style="color: var(--accent-red); font-weight:600;">${fmt(exp)}</td><td style="font-weight: 700; color: ${bal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">${fmt(bal)}</td><td><span class="parcela-badge">${pct}%</span></td><td><span style="color: var(--accent-green);">${fmt(paid)}</span></td><td><span style="color: var(--accent-yellow);">${fmt(pend)}</span></td><td style="text-align: center;"><button class="btn btn-secondary btn-sm" onclick="state.currentMonth='${m}'; renderTabs(); render();">Abrir</button></td></tr>`;
+        
+        if (tbody) tbody.innerHTML += `<tr><td><strong>${m}</strong></td><td style="color: var(--accent-green); font-weight:600;">${fmt(inc)}</td><td style="color: var(--accent-red); font-weight:600;">${fmt(exp)}</td><td style="font-weight: 700; color: ${bal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">${fmt(bal)}</td><td><span class="parcela-badge">${pct}%</span></td><td><span style="color: var(--accent-green);">${fmt(paid)}</span></td><td><span style="color: var(--accent-yellow);">${fmt(pend)}</span></td><td style="text-align: center;"><button class="btn btn-secondary btn-sm" onclick="state.currentMonth='${m}'; renderTabs(); render();">Abrir</button></td></tr>`;
       });
-      $('annIncomes').innerText = fmt(totI);$('annExpenses').innerText = fmt(totE); const annBal = totI - totE; $('annBalance').innerText = fmt(annBal);$('annBalance').style.color = annBal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'; $('annAvgExpense').innerText = fmt(totE / 12);$('annualTableFoot').innerHTML = `<tr><td>TOTAL ANUAL</td><td style="color: var(--accent-green);">${fmt(totI)}</td><td style="color: var(--accent-red);">${fmt(totE)}</td><td style="color: ${annBal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">${fmt(annBal)}</td><td>-</td><td>${fmt(totP)}</td><td>${fmt(totPend)}</td><td></td></tr>`;
+      
+      if ($('annIncomes'))$('annIncomes').innerText = fmt(totI); 
+      if ($('annExpenses'))$('annExpenses').innerText = fmt(totE); 
+      const annBal = totI - totE; 
+      if ($('annBalance')) {
+        $('annBalance').innerText = fmt(annBal);$('annBalance').style.color = annBal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'; 
+      }
+      if ($('annualTableFoot'))$('annualTableFoot').innerHTML = `<tr><td>TOTAL ANUAL</td><td style="color: var(--accent-green);">${fmt(totI)}</td><td style="color: var(--accent-red);">${fmt(totE)}</td><td style="color: ${annBal >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'};">${fmt(annBal)}</td><td>-</td><td>${fmt(totP)}</td><td>${fmt(totPend)}</td><td></td></tr>`;
     }
 
     function exportDataJSON() { const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2)); const a = document.createElement('a'); a.href = dataStr; a.download = `backup_financas_${activeUser}_completo.json`; a.click(); showToast('Backup gerado!'); }

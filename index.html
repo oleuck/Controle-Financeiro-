@@ -451,14 +451,14 @@
     </div>
   </div>
 
-  <!-- MODAL DE DESPESA -->
+  <!-- MODAL DE DESPESA (BLINDADO) -->
   <div class="modal-overlay" id="expenseModal">
     <div class="modal-box">
       <div class="modal-header">
         <h3 id="expModalTitle">Nova Despesa</h3>
         <button class="btn btn-secondary btn-icon" onclick="closeModal('expenseModal')">✕</button>
       </div>
-      <form id="expenseForm" novalidate>
+      <form id="expenseForm" onsubmit="handleExpenseSubmit(event)" novalidate>
         <input type="hidden" id="expId">
         <div class="modal-body">
           <div>
@@ -587,10 +587,11 @@
       </div>
   </div>
 
+  <!-- MODAL DE RECEITA (BLINDADO) -->
   <div class="modal-overlay" id="incomeModal">
     <div class="modal-box" style="max-width: 400px;">
       <div class="modal-header"><h3 id="incModalTitle">Receita</h3><button class="btn btn-secondary btn-icon" onclick="closeModal('incomeModal')">✕</button></div>
-      <form id="incomeForm" novalidate>
+      <form id="incomeForm" onsubmit="handleIncomeSubmit(event)" novalidate>
         <input type="hidden" id="incIdx" value="-1">
         <div class="modal-body">
           <div><label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Nome *</label><input type="text" id="incName" style="width: 100%;" required></div>
@@ -608,10 +609,11 @@
     </div>
   </div>
 
+  <!-- MODAL DE ANO (BLINDADO) -->
   <div class="modal-overlay" id="yearModal">
     <div class="modal-box" style="max-width: 400px;">
         <div class="modal-header"><h3>Novo Ano</h3><button class="btn btn-secondary btn-icon" onclick="closeModal('yearModal')">✕</button></div>
-        <form id="yearForm" novalidate>
+        <form id="yearForm" onsubmit="handleYearSubmit(event)" novalidate>
             <div class="modal-body">
                 <div><label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Ano (ex: 2027) *</label><input type="number" id="yearNum" min="2020" max="2050" style="width: 100%;" required></div>
                 <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.85rem;"><label><input type="radio" name="yType" value="zero" checked> Criar zerado</label><label><input type="radio" name="yType" value="copy"> Copiar contas de outro ano</label></div>
@@ -1199,9 +1201,9 @@
       openModal('expenseModal');
     }
 
-    function saveExpenseFromButton(e) { if (e) e.preventDefault(); saveExpense(); }
-    $('expenseForm').addEventListener('submit', function(e) { e.preventDefault(); saveExpense(); });
-
+    // Funcões disparadas diretamente pelo HTML para evitar erros de leitura
+    function handleExpenseSubmit(e) { if (e) e.preventDefault(); saveExpense(); }
+    
     function saveExpense() {
       try {
         const id = $('expId').value; const desc = $('expDesc').value.trim(); const val = parseFloat(String($('expVal').value).replace(',', '.')) || 0;
@@ -1211,7 +1213,7 @@
         const catInput = $('expCat').value.trim().toUpperCase(); const cat = catInput || 'OUTROS';
         
         if (catInput && !state.categories.some(c => c.name.toUpperCase() === catInput)) { const colors = ['#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899', '#f43f5e', '#14b8a6', '#0ea5e9']; state.categories.push({ name: catInput, color: colors[Math.floor(Math.random() * colors.length)] }); }
-        if (!desc) { showCustomAlert("Atenção", "Preencha a descrição.", "⚠️️"); return; } if (val <= 0) { showCustomAlert("Atenção", "Insira um valor maior que zero.", "⚠️"); return; } if (!dateVal) { showCustomAlert("Atenção", "Selecione o vencimento.", "📅"); return; }
+        if (!desc) { showCustomAlert("Atenção", "Preencha a descrição.", "⚠️"); return; } if (val <= 0) { showCustomAlert("Atenção", "Insira um valor maior que zero.", "⚠️"); return; } if (!dateVal) { showCustomAlert("Atenção", "Selecione o vencimento.", "📅"); return; }
         if (!id && hasCb) { if (cbValRaw <= 0) { showCustomAlert("Cashback", "Insira o valor/porcentagem.", "⚠️"); return; } if (!cbDateRaw) { showCustomAlert("Cashback", "Insira a data do cashback.", "📅"); return; } }
 
         let startYear = parseInt(state.currentYear, 10) || 2026; let startMonthIdx = MONTHS.indexOf(state.currentMonth); if (startMonthIdx === -1) startMonthIdx = 0; let dayNum = 10;
@@ -1308,7 +1310,7 @@
       const result = findExpenseGlobal(id); if (!result) return; const exp = result.exp;
       const msgHtml = `<div style="margin-bottom: 1rem;">Deseja excluir <strong>${exp.descricao}</strong>?</div><div style="padding: 0.75rem; background: var(--bg-tertiary); border-radius: 0.5rem; border: 1px solid var(--border-color);"><label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.85rem; font-weight: 600;"><input type="checkbox" id="delFutureCheckbox" style="width: 16px; height: 16px;">Excluir também dos meses seguintes</label></div>`;
       showCustomConfirm("Excluir Despesa", msgHtml, () => {
-        const deleteFuture = $('delFutureCheckbox') && $('delFutureCheckbox').checked;
+        const deleteFuture = $('delFutureCheckbox') &&$('delFutureCheckbox').checked;
         state.years[result.year][result.month].expenses = state.years[result.year][result.month].expenses.filter(e => e.id !== id);
         if (deleteFuture) {
           const startMonthIdx = MONTHS.indexOf(result.month); const startYearNum = parseInt(result.year, 10);
@@ -1323,32 +1325,34 @@
 
     function openIncomeModal(idx = -1) {
       $('incIdx').value = idx;
-      if (idx >= 0) { const inc = getMonthData().incomes[idx]; $('incModalTitle').innerText = 'Editar Receita'; $('incName').value = inc.name; $('incVal').value = inc.value; $('incDate').value = inc.date || ''; } 
-      else { $('incModalTitle').innerText = 'Nova Receita'; $('incName').value = ''; $('incVal').value = ''; const currentYNum = parseInt(state.currentYear, 10); const currentMIdx = MONTHS.indexOf(state.currentMonth); $('incDate').value = `${currentYNum}-${String(currentMIdx+1).padStart(2,'0')}-01`; }
+      if (idx >= 0) { const inc = getMonthData().incomes[idx]; $('incModalTitle').innerText = 'Editar Receita';$('incName').value = inc.name; $('incVal').value = inc.value; $('incDate').value = inc.date || ''; } 
+      else { $('incModalTitle').innerText = 'Nova Receita';$('incName').value = ''; $('incVal').value = ''; const currentYNum = parseInt(state.currentYear, 10); const currentMIdx = MONTHS.indexOf(state.currentMonth);$('incDate').value = `${currentYNum}-${String(currentMIdx+1).padStart(2,'0')}-01`; }
       openModal('incomeModal');
     }
 
-    $('incomeForm').addEventListener('submit', function(e) {
-      e.preventDefault(); const idx = parseInt($('incIdx').value, 10); const name = $('incName').value.trim(); const val = parseFloat($('incVal').value) || 0; const dateVal = $('incDate').value; const all = $('incAll').checked;
+    function handleIncomeSubmit(e) {
+      if(e) e.preventDefault(); const idx = parseInt($('incIdx').value, 10); const name = $('incName').value.trim(); const val = parseFloat($('incVal').value) || 0; const dateVal = $('incDate').value; const all =$('incAll').checked;
       if (all) { MONTHS.forEach((m, mIdx) => { const d = getMonthData(state.currentYear, m); let dateToSave = dateVal; if(dateVal && dateVal.includes('-')) { const parts = dateVal.split('-'); dateToSave = `${parts[0]}-${String(mIdx + 1).padStart(2, '0')}-${parts[2]}`; } if (idx >= 0 && d.incomes[idx]) d.incomes[idx] = { name, value: val, date: dateToSave }; else d.incomes.push({ name, value: val, date: dateToSave }); }); } 
       else { const d = getMonthData(); if (idx >= 0 && d.incomes[idx]) d.incomes[idx] = { name, value: val, date: dateVal }; else d.incomes.push({ name, value: val, date: dateVal }); }
       closeModal('incomeModal'); render(); syncToCloud(); showToast('Receita salva!');
-    });
+    }
 
     function delIncome(idx) { showCustomConfirm("Excluir Receita", "Deseja excluir esta entrada de renda?", () => { getMonthData().incomes.splice(idx, 1); render(); syncToCloud(); showToast('Removida!'); }, '🗑️'); }
 
     function openNewYearModal() { openModal('yearModal'); }
-    $('yearForm').addEventListener('submit', function(e) {       e.preventDefault(); const y =$('yearNum').value.trim(); if (!y) return; if (state.years[y]) { showCustomAlert("Existente", `O ano ${y} já existe.`, "ℹ️"); return; }
+    
+    function handleYearSubmit(e) {
+      if(e) e.preventDefault(); const y = $('yearNum').value.trim(); if (!y) return; if (state.years[y]) { showCustomAlert("Existente", `O ano ${y} já existe.`, "ℹ️"); return; }
       const type = document.querySelector('input[name="yType"]:checked').value;
       if (type === 'zero') { state.years[y] = createEmptyYear(); } else { const currentData = state.years[state.currentYear] || {}; const newY = {}; MONTHS.forEach(m => { const src = currentData[m] || { incomes: [], expenses: [] }; newY[m] = { incomes: JSON.parse(JSON.stringify(src.incomes || [])), expenses: (src.expenses || []).map(exp => ({ ...exp, id: String('e_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4)), status: 'À PAGAR' })) }; }); state.years[y] = newY; }
       state.currentYear = y; closeModal('yearModal'); renderYears(); renderTabs(); render(); syncToCloud(); showToast(`Ano ${y} criado!`);
-    });
+    }
 
     function openCatModal() { renderCatList(); openModal('catModal'); }
     function renderCatList() { const wrap = $('catListWrap'); wrap.innerHTML = ''; state.categories.forEach((c, i) => { wrap.innerHTML += `<div class="income-item" style="flex-direction:row;"><span style="display:flex; align-items:center; gap:0.4rem;"><input type="color" value="${c.color}" onchange="updateCatCol(${i}, this.value)" style="width:24px; height:24px; padding:0; border:none; cursor:pointer; border-radius:4px;"><strong>${c.name}</strong></span><button class="btn btn-danger btn-sm" onclick="delCat(${i})">🗑️</button></div>`; }); }
     function addCatBtn() { const n = $('catNewName').value.trim().toUpperCase(); const c = $('catNewCol').value; if (n) { if (state.categories.some(x => x.name.toUpperCase() === n)) return; state.categories.push({ name: n, color: c });$('catNewName').value = ''; renderCatList(); fillSelects(); render(); syncToCloud(); } }
     function updateCatCol(idx, col) { if (state.categories[idx]) { state.categories[idx].color = col; fillSelects(); render(); syncToCloud(); } }
-    function delCat(idx) { showCustomConfirm("Excluir", "Deseja excluir esta categoria?", () => { state.categories.splice(idx, 1); renderCatList(); fillSelects(); render(); syncToCloud(); }, '🏷️️'); }
+    function delCat(idx) { showCustomConfirm("Excluir", "Deseja excluir esta categoria?", () => { state.categories.splice(idx, 1); renderCatList(); fillSelects(); render(); syncToCloud(); }, '🏷️'); }
 
     function openPayModal() { renderPayList(); openModal('payModal'); }
     function renderPayList() { const wrap = $('payListWrap'); wrap.innerHTML = ''; state.paymentMethods.forEach((p, i) => { wrap.innerHTML += `<div class="income-item" style="flex-direction:row;"><strong>${p}</strong> <button class="btn btn-danger btn-sm" onclick="delPay(${i})">🗑️</button></div>`; }); }
